@@ -28,8 +28,15 @@ func main() {
     log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/additem", addItem).Methods("POST")
     http.Handle("/", r)
-    http.ListenAndServe(":8080", nil)
+    log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
+
+func isLoggedIn(r *http.Request) {
+    cookies := r.Cookies()
+    log.Println(cookies)
+}
+
 
 func insertItem(it *item) *objectid.ObjectID {
     client, err := mongo.NewClient("mongodb://localhost:27017")
@@ -59,6 +66,7 @@ func insertItem(it *item) *objectid.ObjectID {
 }
 
 func addItem(w http.ResponseWriter, req *http.Request) {
+    isLoggedIn(req)
     decoder := json.NewDecoder(req.Body)
     var it item
     err := decoder.Decode(&it)
