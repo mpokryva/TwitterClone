@@ -13,8 +13,14 @@ import (
 
 type item struct {
     ID objectid.ObjectID
-    Content *string
-    ChildType *string
+    Content *string `json:"content"`
+    ChildType *string `json:"childType"`
+}
+
+type response struct {
+    Status string `json:"status"`
+    ID string  `json:"id"`
+    Error string `json:"error"`
 }
 
 func main() {
@@ -25,11 +31,11 @@ func main() {
     http.ListenAndServe(":8080", nil)
 }
 
-func insertItem(it *item) {
+func insertItem(it *item) *objectid.ObjectID {
     client, err := mongo.NewClient("mongodb://localhost:27017")
     if err != nil {
-        log.Println("Panicking")
-        panic(err)
+        log.Println("Error inserting")
+        return nil
     }
     db := client.Database("twitter")
     col := db.Collection("tweets")
@@ -37,9 +43,19 @@ func insertItem(it *item) {
     log.Println(id)
     it.ID = id
     log.Println(*it)
-    col.InsertOne(
+    doc := bson.NewDocument(bson.EC.ObjectID("_id", id),
+            bson.EC.String("content", *(it.Content)))
+    if it.ChildType != nil {
+        doc.Append(bson.EC.String("childType", *(it.ChildType)))
+    }
+    _, err = col.InsertOne(
         context.Background(),
-        bson.NewDocument(bson.EC.String("item", "test")))
+        doc)
+    if err != nil {
+        return nil
+    } else {
+        return &id
+    }
 }
 
 func addItem(w http.ResponseWriter, req *http.Request) {
@@ -54,19 +70,23 @@ func addItem(w http.ResponseWriter, req *http.Request) {
     if valid {
         // Add the item.
         log.Println(it)
-        insertItem(&it)
-    } else {
-
-    }
-    // Validate req
-    /*for {
-        var it item
-        if err := decoder.Decode(&it); err == io.EOF {
-            break
-        } else if err != nil {
-            panic(err)
+        id := insertItem(&it)
+        var res response
+        if id == nil {
+            res.Status = "error"
+            res.Error = "Item could not be inserted into database."
+        } else {
+            res.Status = "OK"
+            res.Error = ""
+            log.Println(id)
+            res.ID = id.Hex()
         }
-    }*/
+        //w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(res)
+        log.Println("Encoded!")
+    } else {
+        log.Println("Not valid!")
+    }
 }
 
 func validateItem(it item) bool {
