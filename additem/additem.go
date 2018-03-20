@@ -26,7 +26,7 @@ type response struct {
 func main() {
     r := mux.NewRouter()
     log.SetFlags(log.LstdFlags | log.Lshortfile)
-    r.HandleFunc("/additem", addItem).Methods("POST")
+    r.HandleFunc("/additem", addItemHandler).Methods("POST")
     http.Handle("/", r)
     log.Fatal(http.ListenAndServe(":8080", nil))
 }
@@ -76,17 +76,22 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func addItem(w http.ResponseWriter, req *http.Request) {
+func addItemHandler(w http.ResponseWriter, r *http.Request) {
+    res := addItemEndpoint(r)
+    encodeResponse(w, res)
+}
+
+func addItemEndpoint(r *http.Request) response {
     var res response
-    if !isLoggedIn(req) {
+    if !isLoggedIn(r) {
         res.Status = "error"
         res.Error = "User not logged in."
-        encodeResponse(w, res)
+        return res
     }
-    it, err := decodeRequest(req)
+    it, err := decodeRequest(r)
     if (err != nil) {
         res.Error = "JSON decoding error."
-        encodeResponse(w, res)
+        return res
     }
     log.Println(it)
     valid := validateItem(it)
@@ -104,10 +109,10 @@ func addItem(w http.ResponseWriter, req *http.Request) {
         log.Println("Encoded!")
     } else {
         res.Status = "error"
-        res.Error = "Invalid request."
+        res.Error = "Invalid ruest."
         log.Println("Not valid!")
     }
-    encodeResponse(w, res)
+    return res
 }
 
 func validateItem(it item) bool {
@@ -117,7 +122,7 @@ func validateItem(it item) bool {
     } else if (it.ChildType == nil) {
         valid = true
     } else if (*it.ChildType != "retweet" && *it.ChildType != "reply") {
-        // Invalid req
+        // Invalid r
         log.Println("childType not valid")
         valid = false
     }
