@@ -14,13 +14,13 @@ import (
 type item struct {
     ID objectid.ObjectID
     Content *string `json:"content"`
-    ChildType *string `json:"childType"`
+    ChildType *string `json:"childType,omitempty"`
 }
 
 type response struct {
     Status string `json:"status"`
-    ID string  `json:"id"`
-    Error string `json:"error"`
+    ID string  `json:"id,omitempty"`
+    Error string `json:"error,omitempty"`
 }
 
 func main() {
@@ -32,9 +32,9 @@ func main() {
 }
 
 
-func isLoggedIn(r *http.Request) {
-    cookies := r.Cookies()
-    log.Println(cookies)
+func isLoggedIn(r *http.Request) bool {
+    cookie, _ := r.Cookie("username")
+    return cookie != nil
 }
 
 
@@ -65,36 +65,49 @@ func insertItem(it *item) *objectid.ObjectID {
     }
 }
 
-func addItem(w http.ResponseWriter, req *http.Request) {
-    isLoggedIn(req)
-    decoder := json.NewDecoder(req.Body)
+func decodeRequest(r *http.Request) (item, error) {
+    decoder := json.NewDecoder(r.Body)
     var it item
     err := decoder.Decode(&it)
-    if err != nil {
-        panic(err)
+    return it, err
+}
+
+func encodeResponse(w http.ResponseWriter, response interface{}) error {
+    return json.NewEncoder(w).Encode(response)
+}
+
+func addItem(w http.ResponseWriter, req *http.Request) {
+    var res response
+    if !isLoggedIn(req) {
+        res.Status = "error"
+        res.Error = "User not logged in."
+        encodeResponse(w, res)
+    }
+    it, err := decodeRequest(req)
+    if (err != nil) {
+        res.Error = "JSON decoding error."
+        encodeResponse(w, res)
     }
     log.Println(it)
     valid := validateItem(it)
     if valid {
         // Add the item.
-        log.Println(it)
         id := insertItem(&it)
-        var res response
         if id == nil {
             res.Status = "error"
             res.Error = "Item could not be inserted into database."
         } else {
             res.Status = "OK"
             res.Error = ""
-            log.Println(id)
             res.ID = id.Hex()
         }
-        //w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(res)
         log.Println("Encoded!")
     } else {
+        res.Status = "error"
+        res.Error = "Invalid request."
         log.Println("Not valid!")
     }
+    encodeResponse(w, res)
 }
 
 func validateItem(it item) bool {
