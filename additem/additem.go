@@ -28,7 +28,7 @@ func main() {
     log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/additem", addItemHandler).Methods("POST")
     http.Handle("/", r)
-    log.Fatal(http.ListenAndServe(":8080", nil))
+    log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
 
@@ -109,7 +109,7 @@ func addItemEndpoint(r *http.Request) response {
         log.Println("Encoded!")
     } else {
         res.Status = "error"
-        res.Error = "Invalid ruest."
+        res.Error = "Invalid request."
         log.Println("Not valid!")
     }
     return res
