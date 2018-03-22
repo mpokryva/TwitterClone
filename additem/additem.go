@@ -77,22 +77,24 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func addItemHandler(w http.ResponseWriter, r *http.Request) {
-    res := addItemEndpoint(r)
-    encodeResponse(w, res)
-}
-
-func addItemEndpoint(r *http.Request) response {
     var res response
     if !isLoggedIn(r) {
         res.Status = "error"
         res.Error = "User not logged in."
-        return res
+    } else {
+        item, err := decodeRequest(r)
+        if (err != nil) {
+            res.Status = "error"
+            res.Error = "JSON decoding error."
+        } else {
+            res = addItemEndpoint(item)
+        }
     }
-    it, err := decodeRequest(r)
-    if (err != nil) {
-        res.Error = "JSON decoding error."
-        return res
-    }
+    encodeResponse(w, res)
+}
+
+func addItemEndpoint(it item) response {
+    var res response
     log.Println(it)
     valid := validateItem(it)
     if valid {
