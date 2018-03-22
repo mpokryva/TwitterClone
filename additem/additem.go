@@ -4,6 +4,7 @@ import (
     "context"
     "log"
     "net/http"
+    "time"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
@@ -11,10 +12,13 @@ import (
     "github.com/mongodb/mongo-go-driver/bson/objectid"
 )
 
-type item struct {
+type Item struct {
     ID objectid.ObjectID
     Content *string `json:"content"`
     ChildType *string `json:"childType,omitempty"`
+    Likes int `json:"likes"`
+    Retweeted int `json:retweeted"`
+    Timestamp time.Time `json:timestamp"`
 }
 
 type response struct {
@@ -38,7 +42,7 @@ func isLoggedIn(r *http.Request) bool {
 }
 
 
-func insertItem(it *item) *objectid.ObjectID {
+func insertItem(it *Item) *objectid.ObjectID {
     client, err := mongo.NewClient("mongodb://localhost:27017")
     if err != nil {
         log.Println("Error inserting")
@@ -65,9 +69,9 @@ func insertItem(it *item) *objectid.ObjectID {
     }
 }
 
-func decodeRequest(r *http.Request) (item, error) {
+func decodeRequest(r *http.Request) (Item, error) {
     decoder := json.NewDecoder(r.Body)
-    var it item
+    var it Item
     err := decoder.Decode(&it)
     return it, err
 }
@@ -82,23 +86,23 @@ func addItemHandler(w http.ResponseWriter, r *http.Request) {
         res.Status = "error"
         res.Error = "User not logged in."
     } else {
-        item, err := decodeRequest(r)
+        Item, err := decodeRequest(r)
         if (err != nil) {
             res.Status = "error"
             res.Error = "JSON decoding error."
         } else {
-            res = addItemEndpoint(item)
+            res = addItemEndpoint(Item)
         }
     }
     encodeResponse(w, res)
 }
 
-func addItemEndpoint(it item) response {
+func addItemEndpoint(it Item) response {
     var res response
     log.Println(it)
     valid := validateItem(it)
     if valid {
-        // Add the item.
+        // Add the Item.
         id := insertItem(&it)
         if id == nil {
             res.Status = "error"
@@ -117,7 +121,7 @@ func addItemEndpoint(it item) response {
     return res
 }
 
-func validateItem(it item) bool {
+func validateItem(it Item) bool {
     valid := true
     if (it.Content == nil) {
         valid = false
