@@ -31,7 +31,7 @@ func main() {
     log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/adduser", addUser).Methods("POST")
     http.Handle("/", r)
-    http.ListenAndServe(":8080", nil)
+    http.ListenAndServe(":8002", nil)
 }
 
 func insertUser(us *user, key string) bool{
@@ -43,7 +43,16 @@ func insertUser(us *user, key string) bool{
     db := client.Database("twitter")
     col := db.Collection("users")
     log.Println(*us)
+    existingDoc :=bson.NewDocument(bson.EC.String("username", *(us.Email)))
+    err1 := col.FindOne(context.Background(),existingDoc);
+    if err1 != nil{
+      return false
+    }
     doc := bson.NewDocument(bson.EC.String("username", *(us.Username)))
+    err1 = col.FindOne(context.Background(),doc);
+    if err1 != nil{
+      return false
+    }
     doc.Append(bson.EC.String("email", *(us.Email)))
     // bytePassword := []byte(*(us.Password))
     // hashedPassword, err := bcrypt.GenerateFromPassword(bytePassword, bcrypt.DefaultCost)
@@ -73,36 +82,35 @@ func addUser(w http.ResponseWriter, req *http.Request) {
     valid := validateUser(us)
     if valid {
       //create the hashed verification key
-      num := rand.Intn(1000)
+      num := rand.Int()
       numstring := strconv.Itoa(num)
+      log.Println(num, numstring)
       hasher := md5.New()
       hasher.Write([]byte(*(us.Username)))
       hasher.Write([]byte(numstring))
       key := hex.EncodeToString(hasher.Sum(nil))
       // Add the user.
       log.Println(us)
-      if(email(us, key)){
-        insert := insertUser(&us, key)
-        if(insert){
+      if(insertUser(&us, key) && email(us, key)){
           r.Status = "OK"
           r.Error = ""
-        }else {
-          log.Println("Not valid!")
-          r.Status = "error"
-          r.Error = "Invalid/not enough input."
-        }
-      }else{
-        log.Println("Couldn't email")
+      }else {
+        log.Println("Not valid!")
         r.Status = "error"
-        r.Error = "Email could not be sent"
+        r.Error = "Username/email is already in use"
       }
-    return json.NewEncoder(w).Encode(r)
+  }else{
+    r.Status = "error"
+    r.Error = "Not enough input"
   }
+  json.NewEncoder(w).Encode(r)
 }
+
 func email(us user, key string) bool{
+  link := "http://nsamba.cse356.compas.cs.stonybrook.edu/verify?email="+*(us.Email)+"&key="+key
   msg := "From: twiti.verify@gmail.com \n To: " + *(us.Username) + "\n" +
     "Subject: Account Verification\n\n"+
-    "Thank you for joining Twiti!\n This is your validation key: <" + key + "> \n Please click the link to quickly veify your account."
+    "Thank you for joining Twiti!\n This is your validation key: <" + key + "> \n Please click the link to quickly veify your account: "+ link
 
   err := smtp.SendMail("smtp.gmail.com:587", smtp.PlainAuth("","twiti.verify@gmail.com","cloud356", "smtp.gmail.com"),"twiti.verify@gmail.com",[]string{*(us.Email)}, []byte(msg) )
   if err != nil {
