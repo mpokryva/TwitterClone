@@ -60,7 +60,7 @@ func insertUser(us *user, key string) bool{
     //   panic(err)
     // }
     doc.Append(bson.EC.String("password", *(us.Password)))
-    doc.Append(bson.EC.String("verify", "0"))
+    doc.Append(bson.EC.Boolean("verified", false))
     doc.Append(bson.EC.String("key", "<"+key+">"))
     _,err2 := col.InsertOne(context.Background(),doc)
     if err2 != nil {

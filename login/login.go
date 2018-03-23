@@ -38,7 +38,8 @@ func authUser(details userDetails) bool {
     db := client.Database("twitter")
     col := db.Collection("users")
     doc := bson.NewDocument(bson.EC.String("username", *details.Username),
-            bson.EC.String("password", *details.Password))
+            bson.EC.String("password", *details.Password),
+            bson.EC.Boolean("verified", true))
     cursor, err := col.Find(
         context.Background(),
         doc)
