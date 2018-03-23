@@ -14,11 +14,12 @@ import (
 
 type Item struct {
     ID objectid.ObjectID
+    Username string `json:"username"`
     Content *string `json:"content"`
     ChildType *string `json:"childType,omitempty"`
-    Likes int `json:"likes"`
-    Retweeted int `json:retweeted"`
-    Timestamp time.Time `json:timestamp"`
+    Likes int32 `json:"likes"`
+    Retweeted int32 `json:retweeted"`
+    Timestamp int64 `json:timestamp"`
 }
 
 type response struct {
@@ -36,9 +37,13 @@ func main() {
 }
 
 
-func isLoggedIn(r *http.Request) bool {
-    cookie, _ := r.Cookie("username")
-    return cookie != nil
+func checkLogin(r *http.Request) (string, error) {
+    cookie, err := r.Cookie("username")
+    if err != nil {
+        return "", err
+    } else {
+        return cookie.Value, nil
+    }
 }
 
 
@@ -53,9 +58,16 @@ func insertItem(it *Item) *objectid.ObjectID {
     id := objectid.New()
     log.Println(id)
     it.ID = id
+    it.Timestamp = time.Now().Unix()
+    it.Likes = 0
+    it.Retweeted = 0
     log.Println(*it)
     doc := bson.NewDocument(bson.EC.ObjectID("_id", id),
-            bson.EC.String("content", *(it.Content)))
+            bson.EC.String("username", it.Username),
+            bson.EC.String("content", *(it.Content)),
+        bson.EC.Int32("likes", it.Likes),
+        bson.EC.Int32("retweeted", it.Retweeted),
+        bson.EC.Int64("timestamp", it.Timestamp))
     if it.ChildType != nil {
         doc.Append(bson.EC.String("childType", *(it.ChildType)))
     }
@@ -82,16 +94,18 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 
 func addItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
-    if !isLoggedIn(r) {
+    username, err := checkLogin(r)
+    if err != nil {
         res.Status = "error"
         res.Error = "User not logged in."
     } else {
-        Item, err := decodeRequest(r)
+        it, err := decodeRequest(r)
         if (err != nil) {
             res.Status = "error"
             res.Error = "JSON decoding error."
         } else {
-            res = addItemEndpoint(Item)
+            it.Username = username
+            res = addItemEndpoint(it)
         }
     }
     encodeResponse(w, res)
