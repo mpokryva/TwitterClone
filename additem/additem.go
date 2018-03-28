@@ -2,9 +2,10 @@ package main
 
 import (
     "context"
-    "log"
     "net/http"
     "time"
+    "github.com/onrik/logrus/filename"
+    log "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
@@ -18,8 +19,8 @@ type Item struct {
     Content *string `json:"content"`
     ChildType *string `json:"childType,omitempty"`
     Likes int32 `json:"likes"`
-    Retweeted int32 `json:retweeted"`
-    Timestamp int64 `json:timestamp"`
+    Retweeted int32 `json:"retweeted"`
+    Timestamp int64 `json:"timestamp"`
 }
 
 type response struct {
@@ -30,9 +31,10 @@ type response struct {
 
 func main() {
     r := mux.NewRouter()
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/additem", addItemHandler).Methods("POST")
     http.Handle("/", r)
+    log.AddHook(filename.NewHook())
+    log.SetLevel(log.ErrorLevel)
     log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
@@ -48,20 +50,20 @@ func checkLogin(r *http.Request) (string, error) {
 
 
 func insertItem(it *Item) *objectid.ObjectID {
-    client, err := mongo.NewClient("mongodb://localhost:27017")
+    client, err := mongo.NewClient("mongodb://mongo.db:27017")
     if err != nil {
-        log.Println("Error inserting")
+        log.Error("Error inserting")
         return nil
     }
     db := client.Database("twitter")
     col := db.Collection("tweets")
     id := objectid.New()
-    log.Println(id)
+    log.Debug(id.Hex())
     it.ID = id
     it.Timestamp = time.Now().Unix()
     it.Likes = 0
     it.Retweeted = 0
-    log.Println(*it)
+    log.Debug(*it)
     doc := bson.NewDocument(bson.EC.ObjectID("_id", id),
             bson.EC.String("username", it.Username),
             bson.EC.String("content", *(it.Content)),
@@ -113,7 +115,7 @@ func addItemHandler(w http.ResponseWriter, r *http.Request) {
 
 func addItemEndpoint(it Item) response {
     var res response
-    log.Println(it)
+    log.Debug(it)
     valid := validateItem(it)
     if valid {
         // Add the Item.
@@ -126,11 +128,10 @@ func addItemEndpoint(it Item) response {
             res.Error = ""
             res.ID = id.Hex()
         }
-        log.Println("Encoded!")
     } else {
         res.Status = "error"
         res.Error = "Invalid request."
-        log.Println("Not valid!")
+        log.Info("Invalid request!")
     }
     return res
 }
@@ -143,7 +144,7 @@ func validateItem(it Item) bool {
         valid = true
     } else if (*it.ChildType != "retweet" && *it.ChildType != "reply") {
         // Invalid r
-        log.Println("childType not valid")
+        log.Debug("childType not valid")
         valid = false
     }
     return valid

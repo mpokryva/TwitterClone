@@ -1,10 +1,11 @@
 package main
 
 import (
-    "log"
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
+    "github.com/onrik/logrus/filename"
+    log "github.com/sirupsen/logrus"
 )
 
 
@@ -15,9 +16,10 @@ type response struct {
 
 func main() {
     r := mux.NewRouter()
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/logout", logoutHandler).Methods("POST")
     http.Handle("/", r)
+    log.AddHook(filename.NewHook())
+    log.SetLevel(log.ErrorLevel)
     log.Fatal(http.ListenAndServe(":8001", nil))
 }
 

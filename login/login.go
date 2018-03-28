@@ -2,7 +2,8 @@ package main
 
 import (
     "context"
-    "log"
+    "github.com/onrik/logrus/filename"
+    log "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -23,16 +24,17 @@ type userDetails struct {
 
 func main() {
     r := mux.NewRouter()
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/login", loginHandler).Methods("POST")
     http.Handle("/", r)
+    log.AddHook(filename.NewHook())
+    log.SetLevel(log.ErrorLevel)
     log.Fatal(http.ListenAndServe(":8003", nil))
 }
 
 func authUser(details userDetails) bool {
     client, err := mongo.NewClient("mongodb://localhost:27017")
     if err != nil {
-        log.Println("Mongodb error")
+        log.Error("Mongodb error")
         return false
     }
     db := client.Database("twitter")
