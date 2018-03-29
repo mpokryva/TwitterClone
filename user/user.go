@@ -1,16 +1,16 @@
 package main
 
 import (
-    //"context"
+    "context"
     "net/http"
     //"time"
     "github.com/onrik/logrus/filename"
     log "github.com/sirupsen/logrus"
-    //"encoding/json"
+    "encoding/json"
+    "TwitterClone/wrappers"
     "github.com/gorilla/mux"
     //"github.com/mongodb/mongo-go-driver/mongo"
-    //"github.com/mongodb/mongo-go-driver/bson"
-    //"github.com/mongodb/mongo-go-driver/bson/objectid"
+    "github.com/mongodb/mongo-go-driver/bson"
 )
 
 type response struct {
@@ -20,10 +20,11 @@ type response struct {
 }
 
 type User struct {
-    Email string `json:"email"`
-    Followers int `json:"followers"`
-    Following int `json:"following"`
-
+    Username string `json:"username bson:"username"`
+    Email string `json:"email" bson:"email"`
+    Password string `json:"password" bson:"password"`
+    Followers int `json:"followers" bson:"followers"`
+    Following int `json:"following" bson:"following"`
 }
 
 func main() {
@@ -35,9 +36,38 @@ func main() {
     log.Fatal(http.ListenAndServe(":8007", nil))
 }
 
+func encodeResponse(w http.ResponseWriter, response interface{}) error {
+    return json.NewEncoder(w).Encode(response)
+}
+
 func userHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     username := vars["username"]
-    log.Info(username)
+    log.Debug(username)
+    //var res response
+    user, err := findUser(username)
+    if err != nil {
+        log.Info(err)
+    }
+    encodeResponse(w, user)
+}
+
+func findUser(username string) (*User, error) {
+    client, err := wrappers.NewClient()
+    if err != nil {
+        return nil, err
+    }
+    db := client.Database("twitter")
+    coll := db.Collection("users")
+    filter := bson.NewDocument(bson.EC.String("username", username))
+    result := bson.NewDocument()
+    var user User
+    err = coll.FindOne(context.Background(),
+        filter).Decode(result)
+    err = coll.FindOne(context.Background(),
+        filter).Decode(&user)
+    log.Debug(result)
+    log.Debug(user)
+    return nil, nil
 }
 
