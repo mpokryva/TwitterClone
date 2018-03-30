@@ -1,6 +1,0 @@
-
-
-
-func isLoggedIn(r *Request) {
-    
-}
