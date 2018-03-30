@@ -25,6 +25,8 @@ type User struct {
     Password string `json:"password" bson:"password"`
     Followers int `json:"followers" bson:"followers"`
     Following int `json:"following" bson:"following"`
+    Verified bool `json:"verified" bson:"verified"`
+    Key string `json:"key" bson:"key"`
 }
 
 func main() {
