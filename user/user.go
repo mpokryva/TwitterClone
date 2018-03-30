@@ -1,4 +1,4 @@
-package main
+package user
 
 import (
     "context"
@@ -20,7 +20,7 @@ type response struct {
 }
 
 type User struct {
-    Username string `json:"username bson:"username"`
+    Username string `json:"username" bson:"username"`
     Email string `json:"email" bson:"email"`
     Password string `json:"password" bson:"password"`
     Followers int `json:"followers" bson:"followers"`

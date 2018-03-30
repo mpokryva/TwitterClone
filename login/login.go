@@ -9,6 +9,8 @@ import (
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
+    "golang.org/x/crypto/bcrypt"
+    "TwitterClone/user"
 )
 
 
@@ -27,7 +29,7 @@ func main() {
     r.HandleFunc("/login", loginHandler).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
-    log.SetLevel(log.ErrorLevel)
+    log.SetLevel(log.DebugLevel)
     log.Fatal(http.ListenAndServe(":8003", nil))
 }
 
@@ -37,15 +39,20 @@ func authUser(details userDetails) bool {
         log.Error("Mongodb error")
         return false
     }
+    var user user.User
     db := client.Database("twitter")
-    col := db.Collection("users")
-    doc := bson.NewDocument(bson.EC.String("username", *details.Username),
-            bson.EC.String("password", *details.Password),
+    coll := db.Collection("users")
+    filter := bson.NewDocument(bson.EC.String("username", *details.Username),
             bson.EC.Boolean("verified", true))
-    cursor, err := col.Find(
+    err = coll.FindOne(
         context.Background(),
-        doc)
-    return cursor.Next(context.Background())
+        filter).Decode(&user)
+    if err != nil {
+        return false
+    }
+    authed := bcrypt.CompareHashAndPassword([]byte(user.Password),
+    []byte(*details.Password)) == nil
+    return authed
 }
 
 func decodeRequest(r *http.Request) (userDetails, error) {
