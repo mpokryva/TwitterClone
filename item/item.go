@@ -67,7 +67,7 @@ func getItemEndpoint(id string) response {
 
 func deleteItem(id string) response {
     var resp response 
-    client, err := mongo.NewClient("mongodb://localhost:27017")
+    client, err := mongo.NewClient("mongodb://mongo.db:27017")
     if err != nil {
         log.Error("Error connecting to database")
         resp.Status = "error"
@@ -105,7 +105,7 @@ func getItem(id string) response {
     var info Item
     var resp response 
     var prop property
-    client, err := mongo.NewClient("mongodb://localhost:27017")
+    client, err := mongo.NewClient("mongodb://mongo.db:27017")
     if err != nil {
         log.Error("Error connecting to database")
         resp.Status = "error"

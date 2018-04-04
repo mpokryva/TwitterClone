@@ -117,7 +117,7 @@ func getFollowingList(username string, db mongo.Database) ([]string){
 func generateList(sPoint params, r *http.Request) ([]Item, error){
   //Connecting to db and setting up the collection
   log.Info(sPoint)
-  client, err := mongo.NewClient("mongodb://localhost:27017")
+  client, err := mongo.NewClient("mongodb://mongo.db:27017")
   if err != nil {
       log.Println("Error Connecting")
       log.Error("Problem connecting to MongoDB")

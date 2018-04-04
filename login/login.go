@@ -34,7 +34,7 @@ func main() {
 }
 
 func authUser(details userDetails) bool {
-    client, err := mongo.NewClient("mongodb://localhost:27017")
+    client, err := mongo.NewClient("mongodb://mongo.db:27017")
     if err != nil {
         log.Error("Mongodb error")
         return false

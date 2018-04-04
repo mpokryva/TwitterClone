@@ -42,7 +42,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func insertUser(user user.User, key string) bool {
-    client, err := mongo.NewClient("mongodb://localhost:27017")
+    client, err := mongo.NewClient("mongodb://mongo.db:27017")
     if err != nil {
         log.Println("Panicking")
         panic(err)
