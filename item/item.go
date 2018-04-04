@@ -34,8 +34,9 @@ func main() {
     r := mux.NewRouter()
     log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/item/{id}", getItemHandler).Methods("GET")
-    // r.HandleFunc("/item", getItemHandler).Methods("GET")
-
+    r.HandleFunc("/item/{id}", deleteItemHandler).Methods("DELETE")
+    log.AddHook(filename.NewHook())
+    log.SetLevel(log.DebugLevel)
     http.Handle("/", r)
     log.Fatal(http.ListenAndServe(":8005", nil))
 }
@@ -43,13 +44,62 @@ func main() {
 func getItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     id := mux.Vars(r)["id"]
-    log.Println(id)
+    log.Debug(id)
     res = getItemEndpoint(id)
     encodeResponse(w, res)
 }
 
+func deleteItemHandler(w http.ResponseWriter, r *http.Request) {
+    var res response
+    id := mux.Vars(r)["id"]
+    log.Debug(id)
+    res = deleteItemEndpoint(id)
+    encodeResponse(w, res)
+}
+
+func deleteItemEndpoint(id string) response {    
+    return deleteItem(id)
+}
+
 func getItemEndpoint(id string) response {    
     return getItem(id)
+}
+
+func deleteItem(id string) response {
+    var resp response 
+    client, err := mongo.NewClient("mongodb://localhost:27017")
+    if err != nil {
+        log.Error("Error connecting to database")
+        resp.Status = "error"
+        resp.Error = "Database unavailable"
+        return resp
+    }
+    db := client.Database("twitter")
+    col := db.Collection("tweets")
+    objectid,err := objectid.FromHex(id)
+    if err != nil {
+        // log.Println(err)
+        // log.Println(objectid)
+        resp.Status = "error"
+        resp.Error = "Invalid Item ID"
+        return resp
+    }
+
+    doc := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
+    item, err := col.DeleteOne(
+        context.Background(),
+        doc)
+    if err != nil {
+        log.Error("Did not find ObjectID")
+        resp.Status = "error"
+        resp.Error = "Invalid Item ID"
+        return resp
+    }
+    
+    resp.Status = "OK"
+    resp.Error = ""
+    log.Debug("Encoded!")
+    return resp
 }
 
 func getItem(id string) response {
@@ -58,7 +108,7 @@ func getItem(id string) response {
     var prop property
     client, err := mongo.NewClient("mongodb://localhost:27017")
     if err != nil {
-        log.Println("Error connecting to database")
+        log.Error("Error connecting to database")
         resp.Status = "error"
         resp.Error = "Database unavailable"
         return resp
@@ -79,7 +129,7 @@ func getItem(id string) response {
         context.Background(),
         doc)
     if err != nil {
-        log.Println("Did not find ObjectID")
+        log.Error("Did not find ObjectID")
         resp.Status = "error"
         resp.Error = "Invalid Item ID"
         return resp
@@ -125,7 +175,7 @@ func getItem(id string) response {
       resp.Item = info
       resp.Error = ""
     }
-      log.Println("Encoded!")
+      log.Debug("Encoded!")
       return resp
 }
 
