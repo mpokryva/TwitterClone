@@ -3,13 +3,13 @@ package main
 import (
     "time"
     "context"
-    "log"
     "net/http"
     "github.com/onrik/logrus/filename"
     log "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
+
     "github.com/mongodb/mongo-go-driver/bson"
 )
 
@@ -40,7 +40,6 @@ type res struct {
 
 func main() {
     r := mux.NewRouter()
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/search", search).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
@@ -83,7 +82,7 @@ func search(w http.ResponseWriter, req *http.Request) {
       log.Error("Limit exceeded 100")
       json.NewEncoder(w).Encode(r)
     }
-    if(start.Following == nil){
+    if(start.Following != false){
       start.Following = true
     }
     //Generating the list of items
@@ -100,19 +99,27 @@ func search(w http.ResponseWriter, req *http.Request) {
   json.NewEncoder(w).Encode(r)
 }
 
-func getFollowingList(string username, Collection c) (string){
+func getFollowingList(username string, c mongo.Collection) (*bson.Array){
   doc := bson.NewDocument(bson.EC.String("username",username))
-  user,err := col.Find(context.Background(),doc)
+  user,err := c.Find(context.Background(),doc)
   if err != nil{
     log.Error("Could not find user in DB")
-    return []string
+    a := bson.NewArray()
+		a.Append(nil)
+    return a
   }
+  // var foundUser user.User
+  row := bson.NewDocument()
+  user.Decode(row)
   res, err4 := row.Lookup("following")
   if err4 == nil{
-    return res.Value().ReaderArray()
+    log.Println(res.Value())
+    return res.Value().MutableArray()
   }else{
     log.Error(err4)
-    return []string
+    a := bson.NewArray()
+		a.Append(nil)
+    return a
   }
 }
 
@@ -129,15 +136,14 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
 
   var tweetList []Item
   var info Item
-  var prop property
   user,err := getUsername(r)
   doc := bson.NewDocument(bson.EC.SubDocumentFromElements("timestamp",bson.EC.Int64("$lte", (int64)(sPoint.Timestamp),)))
-  if(sPoint.Un != nil){
+  if(sPoint.Un != ""){
     doc.Append(bson.EC.String("username",sPoint.Un))
   }
   if(sPoint.Following == true && user != ""){
-    followingList:=getFollowingList(user,col)
-    doc.Append(bson.EC.SubDocumentFromElements("username",bson.EC.String("$in", followingList))
+    followingList:=getFollowingList(user,*col)
+    doc.Append(bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", followingList)))
   }else{
     log.Info("No logged in user found")
     return nil, err
@@ -154,7 +160,7 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
     lim := sPoint.Limit
     for set.Next(context.Background()) && lim>0{
 
-      row := bson.NewDocument()
+      //row := bson.NewDocument()
       err = set.Decode(&info)
 
 
