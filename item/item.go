@@ -2,7 +2,8 @@ package main
 
 import (
     "context"
-    "log"
+    "github.com/onrik/logrus/filename"
+    log "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -32,7 +33,6 @@ type response struct {
 
 func main() {
     r := mux.NewRouter()
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/item/{id}", getItemHandler).Methods("GET")
     r.HandleFunc("/item/{id}", deleteItemHandler).Methods("DELETE")
     log.AddHook(filename.NewHook())
@@ -86,7 +86,7 @@ func deleteItem(id string) response {
     }
 
     doc := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
-    item, err := col.DeleteOne(
+    _, err = col.DeleteOne(
         context.Background(),
         doc)
     if err != nil {
@@ -95,7 +95,6 @@ func deleteItem(id string) response {
         resp.Error = "Invalid Item ID"
         return resp
     }
-    
     resp.Status = "OK"
     resp.Error = ""
     log.Debug("Encoded!")

@@ -2,7 +2,8 @@ package main
 
 import (
     "context"
-    "log"
+    "github.com/onrik/logrus/filename"
+    log "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -22,7 +23,6 @@ type res struct {
 
 func main() {
     r := mux.NewRouter()
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/verify", verifyUser).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
