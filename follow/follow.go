@@ -43,7 +43,7 @@ func checkLogin(r *http.Request) (string, error) {
     }
 }
 
-func followUser(username string, it *Request) error {
+func followUser(currentUser string, userToFol string, follow bool) error {
     client, err := wrappers.NewClient()
     if err != nil {
         return nil
@@ -54,31 +54,56 @@ func followUser(username string, it *Request) error {
     // Check if user to follow exists.
     // Assuming that logged in user exists (not bogus cookie).
     checkUserFilter := bson.NewDocument(
-        bson.EC.String("username", *it.Username))
+        bson.EC.String("username", userToFol))
     var userToFollow user.User
     err = coll.FindOne(context.Background(), checkUserFilter).Decode(&userToFollow)
     if err != nil {
         log.Info(err)
         return errors.New("User to follow doesn't exist.")
     }
+    var listOp string
+    var countInc int32
+    if follow {
+        listOp = "$addToSet"
+        countInc = 1
+    } else {
+        listOp = "$pull"
+        countInc = -1
+    }
     // Update following list of logged in user.
     filter := bson.NewDocument(
-        bson.EC.String("username", username))
-    //arr := bson.EC.ArrayFromElements(username,
-            //bson.VC.String(*it.Username))
+        bson.EC.String("username", currentUser))
     update := bson.NewDocument(
-        bson.EC.SubDocumentFromElements("$addToSet",
-            bson.EC.String("following", *it.Username)))
+        bson.EC.SubDocumentFromElements(listOp,
+            bson.EC.String("following", userToFol)))
     err = UpdateOne(coll, filter, update)
     if err != nil {
         return err
     }
+
+    // Update following count.
+    update = bson.NewDocument(
+        bson.EC.SubDocumentFromElements("$inc",
+            bson.EC.Int32("followingCount", countInc)))
+    err = UpdateOne(coll, filter, update)
+    if err != nil {
+        return err
+    }
+
     // Updated following successfully. Now updating followers of other user.
     filter = bson.NewDocument(
-        bson.EC.String("username", *it.Username))
+        bson.EC.String("username", userToFol))
     update = bson.NewDocument(
-        bson.EC.SubDocumentFromElements("$addToSet",
-            bson.EC.String("followers", username)))
+        bson.EC.SubDocumentFromElements(listOp,
+            bson.EC.String("followers", currentUser)))
+    err = UpdateOne(coll, filter, update)
+    if err != nil {
+        return err
+    }
+    // Update follower count.
+    update = bson.NewDocument(
+        bson.EC.SubDocumentFromElements("$inc",
+            bson.EC.Int32("followerCount", countInc)))
     return UpdateOne(coll, filter, update)
 }
 
@@ -138,7 +163,7 @@ func followEndpoint(username string,it Request) response {
     valid := validateReq(it)
     if valid {
         // Add the Item.
-        err := followUser(username,&it)
+        err := followUser(username, *it.Username, *it.Follow)
         if err != nil {
             res.Status = "error"
             res.Error = err.Error()
