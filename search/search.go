@@ -11,6 +11,7 @@ import (
     "github.com/mongodb/mongo-go-driver/mongo"
     "TwitterClone/user"
     "github.com/mongodb/mongo-go-driver/bson"
+    "github.com/mongodb/mongo-go-driver/bson/objectid"
 )
 
 type params struct {
@@ -22,7 +23,8 @@ type params struct {
 }
 
 type Item struct {
-    ID string`json:"id" bson:"id"`
+    ID objectid.ObjectID `json:"-" bson:"_id"`
+    IdString string `json:"id" bson:"id"`
     Content string `json:"content" bson:"content"`
     Username string `json:"username" bson:"username"`
     Property property `json:"property" bson:"property"`
@@ -160,6 +162,7 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
     for set.Next(context.Background()) && lim>0{
       //row := bson.NewDocument()
       err = set.Decode(&info)
+      info.IdString = info.ID.Hex()
       tweetList = append(tweetList,info)
       lim -= 1
     }
