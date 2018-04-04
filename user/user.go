@@ -6,8 +6,8 @@ type User struct {
     Password string `json:"password,omitempty" bson:"password"`
     Followers []string `json:"followers" bson:"followers"`
     Following []string `json:"following" bson:"following"`
-    FollowerCount []string `json:"followerCount" bson:"followerCount"`
-    FollowingCount []string `json:"followingCount" bson:"followingCount"`
+    FollowerCount int `json:"followerCount" bson:"followerCount"`
+    FollowingCount int `json:"followingCount" bson:"followingCount"`
     Verified bool `json:"verified,omitempty" bson:"verified"`
     Key string `json:"key,omitempty" bson:"key"`
 }
