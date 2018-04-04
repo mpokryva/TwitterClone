@@ -9,25 +9,25 @@ import (
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
-
+    "TwitterClone/user"
     "github.com/mongodb/mongo-go-driver/bson"
 )
 
 type params struct {
     Timestamp int64 `json:"timestamp,string"`
     Limit int `json:"limit,string"`
-    Q string `json:"q,string,omitempty"`
-    Un string `json:"username,string,omitempty"`
-    Following bool `json:"following,string,omitempty"`
+    Q string `json:"q,omitempty"`
+    Un string `json:"username,omitempty"`
+    Following string `json:"following,omitempty"`
 }
 
 type Item struct {
-    ID string`json:"id"`
-    Content string `json:"content"`
-    Username string `json:"username"`
-    Property property `json:"property"`
-    Retweeted int `json:"retweeted"`
-    Timestamp int64 `json:"timestamp"`
+    ID string`json:"id" bson:"id"`
+    Content string `json:"content" bson:"content"`
+    Username string `json:"username" bson:"username"`
+    Property property `json:"property" bson:"property"`
+    Retweeted int `json:"retweeted" bson:"retweeted"`
+    Timestamp int64 `json:"timestamp" bson:"timestamp"`
 }
 type property struct {
   Likes int `json:"likes"`
@@ -43,14 +43,14 @@ func main() {
     r.HandleFunc("/search", search).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
-    log.SetLevel(log.ErrorLevel)
+    log.SetLevel(log.InfoLevel)
     http.ListenAndServe(":8006", nil)
 }
 
 func getUsername(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
     if err != nil {
-        return "", err
+        return "", err  //CHANGE THIS
     } else {
         return cookie.Value, nil
     }
@@ -82,8 +82,8 @@ func search(w http.ResponseWriter, req *http.Request) {
       log.Error("Limit exceeded 100")
       json.NewEncoder(w).Encode(r)
     }
-    if(start.Following != false){
-      start.Following = true
+    if(start.Following != "false"){
+      start.Following = "true"
     }
     //Generating the list of items
     itemList, err := generateList(start, req)
@@ -99,32 +99,24 @@ func search(w http.ResponseWriter, req *http.Request) {
   json.NewEncoder(w).Encode(r)
 }
 
-func getFollowingList(username string, c mongo.Collection) (*bson.Array){
+func getFollowingList(username string, db mongo.Database) ([]string){
   doc := bson.NewDocument(bson.EC.String("username",username))
-  user,err := c.Find(context.Background(),doc)
+  c := db.Collection("users")
+  userFind,err := c.Find(context.Background(),doc)
   if err != nil{
     log.Error("Could not find user in DB")
-    a := bson.NewArray()
-		a.Append(nil)
-    return a
+    return nil
   }
-  // var foundUser user.User
-  row := bson.NewDocument()
-  user.Decode(row)
-  res, err4 := row.Lookup("following")
-  if err4 == nil{
-    log.Println(res.Value())
-    return res.Value().MutableArray()
-  }else{
-    log.Error(err4)
-    a := bson.NewArray()
-		a.Append(nil)
-    return a
-  }
+
+  var foundUser user.User
+  userFind.Decode(foundUser)
+  log.Info(foundUser)
+  return foundUser.Following
 }
 
 func generateList(sPoint params, r *http.Request) ([]Item, error){
   //Connecting to db and setting up the collection
+  log.Info(sPoint)
   client, err := mongo.NewClient("mongodb://localhost:27017")
   if err != nil {
       log.Println("Error Connecting")
@@ -136,67 +128,38 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
 
   var tweetList []Item
   var info Item
+  //var prop property
   user,err := getUsername(r)
+  if err != nil{
+    log.Error(err)
+    return nil,err
+  }
   doc := bson.NewDocument(bson.EC.SubDocumentFromElements("timestamp",bson.EC.Int64("$lte", (int64)(sPoint.Timestamp),)))
   if(sPoint.Un != ""){
     doc.Append(bson.EC.String("username",sPoint.Un))
   }
-  if(sPoint.Following == true && user != ""){
-    followingList:=getFollowingList(user,*col)
-    doc.Append(bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", followingList)))
-  }else{
-    log.Info("No logged in user found")
-    return nil, err
+  if(sPoint.Following == "true"){
+    followingList:=getFollowingList(user,*db)
+    bArray := bson.NewArray()
+    for _,element := range followingList{
+      bArray.Append(bson.EC.String("fUsername",element).Value())
+    }
+    doc.Append(bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", bArray)))
   }
+  log.Info(doc)
   set,err := col.Find(
       context.Background(),
       doc)
   //error checking, if valid then it retrieves the limit's amount of document
   if err != nil {
-    log.Println("Error querying")
     log.Error("Problem with query")
       return nil, err
   } else {
+    log.Info(set)
     lim := sPoint.Limit
     for set.Next(context.Background()) && lim>0{
-
       //row := bson.NewDocument()
       err = set.Decode(&info)
-
-
-      //log.Println(row)
-
-      // res, err4 := row.Lookup("content")
-      // if err4 == nil{
-      //   info.Content = res.Value().StringValue()
-      // }
-      //
-      // res, err4 = row.Lookup("_id")
-      // if err4 == nil{
-      //   info.ID = res.Value().ObjectID().Hex()
-      // }
-      //
-      // res, err4 = row.Lookup("likes")
-      // if err4 == nil{
-      //   prop.Likes = (int)(res.Value().Int32())
-      //   info.Property = prop
-      // }
-      //
-      // res, err4 = row.Lookup("username")
-      // if err4 == nil{
-      //   info.Username = res.Value().StringValue()
-      // }
-      //
-      // res, err4 = row.Lookup("retweeted")
-      // if err4 == nil{
-      //   info.Retweeted = (int)(res.Value().Int32())
-      // }
-      //
-      // res, err4 = row.Lookup("timestamp")
-      // if err4 == nil{
-      //   info.Timestamp= res.Value().Int64()
-      // }
-
       tweetList = append(tweetList,info)
       lim -= 1
     }
