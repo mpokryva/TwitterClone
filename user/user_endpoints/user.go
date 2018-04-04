@@ -14,8 +14,14 @@ import (
 
 type response struct {
     Status string `json:"status"`
-    User *user.User `json:"user,omitempty"`
+    User userResponse `json:"user,omitempty"`
     Error string `json:"error,omitempty"`
+}
+
+type userResponse struct {
+    Email string `json:"email"`
+    Followers int `json:"followers"`
+    Following int `json:"following"`
 }
 
 
@@ -44,12 +50,11 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
         res.Error = err.Error()
     } else {
         log.Debug(user)
-        res.Status = "OK"
-        user.Password = ""
-        user.Key = ""
-        user.Verified = false
-        user.Email = ""
-        res.User = user
+        var userRes userResponse
+        userRes.Email = user.Email
+        userRes.Following = user.FollowingCount
+        userRes.Followers = user.FollowerCount
+        res.User = userRes
     }
     encodeResponse(w, res)
 }
