@@ -5,7 +5,8 @@ import (
     "net/http"
     "time"
     "github.com/onrik/logrus/filename"
-    log "github.com/sirupsen/logrus"
+    "os"
+    "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
@@ -28,13 +29,22 @@ type response struct {
     ID string  `json:"id,omitempty"`
     Error string `json:"error,omitempty"`
 }
-
+var log = logrus.New()
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/additem", addItemHandler).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
-    log.SetLevel(log.ErrorLevel)
+    //log.SetLevel(log.InfoLevel)
+
+    log.Out = os.Stdout
+    //You could set this to any `io.Writer` such as a file
+    file, err := os.OpenFile("logrus.log", os.O_CREATE|os.O_WRONLY, 0666)
+    if err == nil {
+     log.Out = file
+    } else {
+     log.Info("Failed to log to file, using default stderr")
+    }
     log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
@@ -52,7 +62,7 @@ func checkLogin(r *http.Request) (string, error) {
 func insertItem(it *Item) *objectid.ObjectID {
     client, err := mongo.NewClient("mongodb://mongo.db:27017")
     if err != nil {
-        log.Error("Error inserting")
+        log.Error("Error Connecting to Database")
         return nil
     }
     db := client.Database("twitter")
@@ -77,6 +87,7 @@ func insertItem(it *Item) *objectid.ObjectID {
         context.Background(),
         doc)
     if err != nil {
+      log.Error(err.Error())
         return nil
     } else {
         return &id
@@ -98,11 +109,13 @@ func addItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     username, err := checkLogin(r)
     if err != nil {
+      log.Error("User not logged in")
         res.Status = "error"
         res.Error = "User not logged in."
     } else {
         it, err := decodeRequest(r)
         if (err != nil) {
+          log.Error("JSON decoding error")
             res.Status = "error"
             res.Error = "JSON decoding error."
         } else {
@@ -121,6 +134,7 @@ func addItemEndpoint(it Item) response {
         // Add the Item.
         id := insertItem(&it)
         if id == nil {
+          log.Error("Item could not be inserted into database.")
             res.Status = "error"
             res.Error = "Item could not be inserted into database."
         } else {
@@ -133,6 +147,9 @@ func addItemEndpoint(it Item) response {
         res.Error = "Invalid request."
         log.Info("Invalid request!")
     }
+    log.WithFields(logrus.Fields{
+    "content": it.Content,
+    }).Info("About to return from adding the tweet")
     return res
 }
 
