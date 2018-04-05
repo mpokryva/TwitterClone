@@ -12,6 +12,7 @@ import (
     "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
+    "TwitterClone/wrappers"
 )
 
 type Item struct {
@@ -30,13 +31,13 @@ type response struct {
     Error string `json:"error,omitempty"`
 }
 var log = logrus.New()
+var client *mongo.Client
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/additem", addItemHandler).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
-    //log.SetLevel(log.InfoLevel)
-
+    log.SetLevel(logrus.DebugLevel)
     log.Out = os.Stdout
     //You could set this to any `io.Writer` such as a file
     file, err := os.OpenFile("logrus.log", os.O_CREATE|os.O_WRONLY, 0666)
@@ -44,6 +45,10 @@ func main() {
      log.Out = file
     } else {
      log.Info("Failed to log to file, using default stderr")
+    }
+    client, err = wrappers.NewClient()
+    if err != nil {
+        log.Fatal("Failed to establish Mongo connection.")
     }
     log.Fatal(http.ListenAndServe(":8000", nil))
 }
@@ -60,11 +65,6 @@ func checkLogin(r *http.Request) (string, error) {
 
 
 func insertItem(it *Item) (error, *objectid.ObjectID) {
-    client, err := mongo.NewClient("mongodb://mongo.db:27017")
-    if err != nil {
-        log.Error("Error Connecting to Database")
-        return err,nil
-    }
     db := client.Database("twitter")
     col := db.Collection("tweets")
     id := objectid.New()
@@ -83,7 +83,7 @@ func insertItem(it *Item) (error, *objectid.ObjectID) {
     if it.ChildType != nil {
         doc.Append(bson.EC.String("childType", *(it.ChildType)))
     }
-    _, err = col.InsertOne(
+    _, err := col.InsertOne(
         context.Background(),
         doc)
     if err != nil {
