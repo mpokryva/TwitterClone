@@ -4,6 +4,7 @@ import (
     "time"
     "context"
     "net/http"
+    "os"
     "github.com/onrik/logrus/filename"
     log "github.com/sirupsen/logrus"
     "encoding/json"
@@ -47,9 +48,20 @@ func main() {
     r.HandleFunc("/search", search).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
-    log.SetLevel(log.InfoLevel)
     var err error
     client, err = mongo.NewClient("mongodb://mongo.db:27017")
+    // Log to a file
+    f, err := os.OpenFile("search.log",
+    os.O_CREATE | os.O_RDWR, 0666)
+    if err != nil {
+        log.Fatal("Logging file could not be opened.")
+    }
+    f.Truncate(0)
+    f.Seek(0, 0)
+    defer f.Close()
+    log.SetFormatter(&log.JSONFormatter{})
+    log.SetOutput(f)
+    log.SetLevel(log.DebugLevel)
     if err != nil {
         log.Fatal("Problem connecting to MongoDB")
     }
@@ -78,6 +90,8 @@ func search(w http.ResponseWriter, req *http.Request) {
        json.NewEncoder(w).Encode(r)
        return
     }
+    log.WithFields(log.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
+    "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
     //Error checking and defaulting the parameters
     if(start.Timestamp == 0){
       start.Timestamp = time.Now().Unix()
