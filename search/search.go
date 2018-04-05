@@ -90,8 +90,6 @@ func search(w http.ResponseWriter, req *http.Request) {
        json.NewEncoder(w).Encode(r)
        return
     }
-    log.WithFields(log.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
-    "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
     //Error checking and defaulting the parameters
     if(start.Timestamp == 0){
       start.Timestamp = time.Now().Unix()
@@ -110,6 +108,8 @@ func search(w http.ResponseWriter, req *http.Request) {
       *def = true
       start.Following = def
     }
+    log.WithFields(log.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
+    "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
     //Generating the list of items
     itemList, err := generateList(start, req)
     //Error checking the returned list and returning the proper json response
@@ -125,18 +125,17 @@ func search(w http.ResponseWriter, req *http.Request) {
 }
 
 func getFollowingList(username string, db mongo.Database) ([]string){
-  doc := bson.NewDocument(bson.EC.String("username",username))
+  filter := bson.NewDocument(bson.EC.String("username",username))
   c := db.Collection("users")
-  userFind,err := c.Find(context.Background(),doc)
+  var foundUser user.User
+  err := c.FindOne(context.Background(), filter).Decode(&foundUser)
   if err != nil{
     log.Error("Could not find user in DB")
     return nil
   }
-
-  var foundUser user.User
-  userFind.Decode(foundUser)
   log.Info(foundUser)
   return foundUser.Following
+
 }
 
 func generateList(sPoint params, r *http.Request) ([]Item, error){
