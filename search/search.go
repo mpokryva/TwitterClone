@@ -165,7 +165,7 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
     doc.Append(bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", bArray)))
   }
   if(sPoint.Q != ""){
-    doc.Append(bson.EC.SubDocumentFromElements("$text",bson.EC.String("$search", sPoint.Q)))
+    doc.Append(bson.EC.SubDocumentFromElements("$regex",bson.EC.String("content", sPoint.Q)))
   }
   log.Info(doc)
   set,err := col.Find(
