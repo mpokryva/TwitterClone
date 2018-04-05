@@ -1,0 +1,12 @@
+{"Q":"blah","following":false,"level":"info","limit":25,"msg":"params","source":"search/search.go:112","time":"2018-04-05T17:20:53Z","timestamp":1522948853,"un":""}
+{"level":"info","msg":"{1522948853 25 blah  0xc4200726cc}","source":"search/search.go:143","time":"2018-04-05T17:20:53Z"}
+{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522948853}}\"}, bson.Element{[embedded document]\"$text\": \"bson.Reader{bson.Element{[string]\\\"$search\\\": \\\"blah\\\"}}\"}}","source":"search/search.go:170","time":"2018-04-05T17:20:53Z"}
+{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc42000ee50 0 \u003cnil\u003e 0xc4200e2780}","source":"search/search.go:179","time":"2018-04-05T17:20:53Z"}
+{"Q":"test","following":false,"level":"info","limit":25,"msg":"params","source":"search/search.go:112","time":"2018-04-05T17:23:00Z","timestamp":1522948980,"un":""}
+{"level":"info","msg":"{1522948980 25 test  0xc42019abc4}","source":"search/search.go:143","time":"2018-04-05T17:23:00Z"}
+{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522948980}}\"}, bson.Element{[embedded document]\"$text\": \"bson.Reader{bson.Element{[string]\\\"$search\\\": \\\"test\\\"}}\"}}","source":"search/search.go:170","time":"2018-04-05T17:23:00Z"}
+{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc4201bc488 0 \u003cnil\u003e 0xc42000d1c0}","source":"search/search.go:179","time":"2018-04-05T17:23:00Z"}
+{"Q":"NEW","following":false,"level":"info","limit":25,"msg":"params","source":"search/search.go:112","time":"2018-04-05T17:24:20Z","timestamp":1522949060,"un":""}
+{"level":"info","msg":"{1522949060 25 NEW  0xc4201f4133}","source":"search/search.go:143","time":"2018-04-05T17:24:20Z"}
+{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522949060}}\"}, bson.Element{[embedded document]\"$text\": \"bson.Reader{bson.Element{[string]\\\"$search\\\": \\\"NEW\\\"}}\"}}","source":"search/search.go:170","time":"2018-04-05T17:24:20Z"}
+{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc4201bcc90 0 \u003cnil\u003e 0xc4200e3660}","source":"search/search.go:179","time":"2018-04-05T17:24:20Z"}
