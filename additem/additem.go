@@ -59,11 +59,11 @@ func checkLogin(r *http.Request) (string, error) {
 }
 
 
-func insertItem(it *Item) *objectid.ObjectID {
+func insertItem(it *Item) (error, *objectid.ObjectID) {
     client, err := mongo.NewClient("mongodb://mongo.db:27017")
     if err != nil {
         log.Error("Error Connecting to Database")
-        return nil
+        return err,nil
     }
     db := client.Database("twitter")
     col := db.Collection("tweets")
@@ -88,9 +88,9 @@ func insertItem(it *Item) *objectid.ObjectID {
         doc)
     if err != nil {
       log.Error(err.Error())
-        return nil
+        return err, nil
     } else {
-        return &id
+        return nil, &id
     }
 }
 
@@ -132,14 +132,13 @@ func addItemEndpoint(it Item) response {
     valid := validateItem(it)
     if valid {
         // Add the Item.
-        id := insertItem(&it)
-        if id == nil {
-          log.Error("Item could not be inserted into database.")
+        err, id := insertItem(&it)
+        if err != nil {
+            log.Error("Item could not be inserted into database.")
             res.Status = "error"
-            res.Error = "Item could not be inserted into database."
+            res.Error = err.Error()
         } else {
             res.Status = "OK"
-            res.Error = ""
             res.ID = id.Hex()
         }
     } else {
