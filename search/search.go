@@ -16,10 +16,10 @@ import (
 
 type params struct {
     Timestamp int64 `json:"timestamp,string"`
-    Limit int `json:"limit,string"`
+    Limit int `json:"limit,omitempty"`
     Q string `json:"q,omitempty"`
     Un string `json:"username,omitempty"`
-    Following string `json:"following,omitempty"`
+    Following *bool `json:"following,omitempty"`
 }
 
 type Item struct {
@@ -91,8 +91,10 @@ func search(w http.ResponseWriter, req *http.Request) {
       log.Error("Limit exceeded 100")
       json.NewEncoder(w).Encode(r)
     }
-    if(start.Following != "false"){
-      start.Following = "true"
+    if(start.Following == nil){
+      def := new(bool)
+      *def = true
+      start.Following = def
     }
     //Generating the list of items
     itemList, err := generateList(start, req)
@@ -141,7 +143,7 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
   if(sPoint.Un != ""){
     doc.Append(bson.EC.String("username",sPoint.Un))
   }
-  if(sPoint.Following == "true"){
+  if(*(sPoint.Following) == true){
     followingList:=getFollowingList(user,*db)
     bArray := bson.NewArray()
     for _,element := range followingList{
