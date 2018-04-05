@@ -40,12 +40,19 @@ type res struct {
   Error string `json:"error,omitempty"`
 }
 
+var client *mongo.Client
+
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/search", search).Methods("POST")
     http.Handle("/", r)
     log.AddHook(filename.NewHook())
     log.SetLevel(log.InfoLevel)
+    var err error
+    client, err = mongo.NewClient("mongodb://mongo.db:27017")
+    if err != nil {
+        log.Fatal("Problem connecting to MongoDB")
+    }
     http.ListenAndServe(":8006", nil)
 }
 
@@ -119,12 +126,6 @@ func getFollowingList(username string, db mongo.Database) ([]string){
 func generateList(sPoint params, r *http.Request) ([]Item, error){
   //Connecting to db and setting up the collection
   log.Info(sPoint)
-  client, err := mongo.NewClient("mongodb://mongo.db:27017")
-  if err != nil {
-      log.Println("Error Connecting")
-      log.Error("Problem connecting to MongoDB")
-      return nil, err
-  }
   db := client.Database("twitter")
   col := db.Collection("tweets")
 
