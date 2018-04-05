@@ -12,6 +12,7 @@ import (
     "github.com/gorilla/mux"
     //"github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
+    "TwitterClone/user"
 )
 
 type params struct {
@@ -20,7 +21,7 @@ type params struct {
 
 type response struct {
     Status string `json:"status"`
-    Users []string `json:"users,omitempty"`
+    Users []string `json:"users"`
     Error string `json:"error,omitempty"`
 }
 
@@ -62,17 +63,21 @@ func followingHandler(w http.ResponseWriter, r *http.Request) {
     if e != nil{
       log.Info(e)
       resp.Status = "error"
-      encodeResponse(w,r)
+      resp.Error = e.Error()
+      encodeResponse(w,resp)
     }
     username := getUsername(r)
     list, err := findUserFollowing(username,p)
     if err != nil {
         log.Info(err)
         resp.Status = "error"
-        encodeResponse(w,r)
+        resp.Error = err.Error()
+        encodeResponse(w,resp)
+    }else{
+      resp.Status = "OK"
+      resp.Users = list
+      encodeResponse(w, resp)
     }
-    resp.Users = list
-    encodeResponse(w, resp)
 }
 
 func followersHandler(w http.ResponseWriter, r *http.Request) {
@@ -81,55 +86,49 @@ func followersHandler(w http.ResponseWriter, r *http.Request) {
     if e != nil{
       log.Info(e)
       resp.Status = "error"
-      encodeResponse(w,r)
+      resp.Error = e.Error()
+      encodeResponse(w,resp)
     }
     username := getUsername(r)
     list, err := findUserFollowers(username,p)
     if err != nil {
         log.Info(err)
         resp.Status = "error"
-        encodeResponse(w,r)
+        resp.Error = err.Error()
+        encodeResponse(w,resp)
+    }else{
+      resp.Status = "OK"
+      resp.Users = list
+      encodeResponse(w, resp)
     }
-    resp.Users = list
-    encodeResponse(w, resp)
 }
 
 func findUserFollowing(username string, p params) ([]string, error) {
     user,err := findUser(username)
+    list := []string{}
     if err != nil{
       log.Error(err)
       return nil,errors.New(err.Error())
     }
-    res, err := (*user).Lookup("following")
-    if err != nil{
-      log.Error(err)
-      return nil,errors.New(err.Error())
+    if user.Followers != nil{
+      return user.Followers, nil
+    }else{
+      return list, nil
     }
-    list,err := createList(p,*res)
-    if err != nil{
-      log.Error(err)
-      return nil,errors.New(err.Error())
-    }
-    return list, nil
 }
 
 func findUserFollowers(username string, p params) ([]string, error) {
     user,err := findUser(username)
+    list := []string{}
     if err != nil{
       log.Error(err)
       return nil,errors.New(err.Error())
     }
-    res, err := (*user).Lookup("followers")
-    if err != nil{
-      log.Error(err)
-      return nil,errors.New(err.Error())
+    if user.Followers != nil{
+      return user.Followers, nil
+    }else{
+      return list, nil
     }
-    list,err := createList(p,*res)
-    if err != nil{
-      log.Error(err)
-      return nil,errors.New(err.Error())
-    }
-    return list, nil
 }
 
 func createList(p params, res bson.Element) ([]string,error) {
@@ -152,22 +151,22 @@ func createList(p params, res bson.Element) ([]string,error) {
   return list,nil
 }
 
-func findUser(username string) (*bson.Document,error){
+func findUser(username string) (user.User,error){
+  var foundUser user.User
   client, err := wrappers.NewClient()
   if err != nil {
-      return nil,err
+      return foundUser,err
   }
   db := client.Database("twitter")
   coll := db.Collection("users")
   filter := bson.NewDocument(bson.EC.String("username", username))
-  result := bson.NewDocument()
 
   err = coll.FindOne(context.Background(),
-      filter).Decode(result)
-  log.Debug(result)
+      filter).Decode(&foundUser)
+  log.Debug(foundUser)
   if err != nil{
     log.Error("Could not find user")
-    return nil,errors.New("Could not find user")
+    return foundUser,errors.New("Could not find user")
   }
-  return result,nil
+  return foundUser,nil
 }
