@@ -1,2 +1,0 @@
-time="2018-04-05T03:42:38Z" level=error msg="User not logged in" source="additem/additem.go:112"
-time="2018-04-05T03:43:04Z" level=error msg="User not logged in" source="additem/additem.go:112"
