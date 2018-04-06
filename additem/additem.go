@@ -4,7 +4,6 @@ import (
     "context"
     "net/http"
     "time"
-    "github.com/onrik/logrus/filename"
     "os"
     "github.com/sirupsen/logrus"
     "encoding/json"
@@ -30,22 +29,24 @@ type response struct {
     ID string  `json:"id,omitempty"`
     Error string `json:"error,omitempty"`
 }
-var log = logrus.New()
 var client *mongo.Client
+var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/additem", addItemHandler).Methods("POST")
     http.Handle("/", r)
-    log.AddHook(filename.NewHook())
-    log.SetLevel(logrus.DebugLevel)
-    log.Out = os.Stdout
-    //You could set this to any `io.Writer` such as a file
-    file, err := os.OpenFile("logrus.log", os.O_CREATE|os.O_WRONLY, 0666)
-    if err == nil {
-     log.Out = file
-    } else {
-     log.Info("Failed to log to file, using default stderr")
+    // Log to a file
+    var f *os.File
+    var err error
+    log, f, err = wrappers.FileLogger("additem.log", os.O_CREATE | os.O_RDWR,
+        0666)
+    if err != nil {
+        log.Fatal("Logging file could not be opened.")
     }
+    f.Truncate(0)
+    f.Seek(0, 0)
+    defer f.Close()
+    log.SetLevel(logrus.DebugLevel)
     client, err = wrappers.NewClient()
     if err != nil {
         log.Fatal("Failed to establish Mongo connection.")

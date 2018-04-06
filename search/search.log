@@ -1,12 +1,10 @@
-{"Q":"blah","following":false,"level":"info","limit":25,"msg":"params","source":"search/search.go:112","time":"2018-04-05T17:20:53Z","timestamp":1522948853,"un":""}
-{"level":"info","msg":"{1522948853 25 blah  0xc4200726cc}","source":"search/search.go:143","time":"2018-04-05T17:20:53Z"}
-{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522948853}}\"}, bson.Element{[embedded document]\"$text\": \"bson.Reader{bson.Element{[string]\\\"$search\\\": \\\"blah\\\"}}\"}}","source":"search/search.go:170","time":"2018-04-05T17:20:53Z"}
-{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc42000ee50 0 \u003cnil\u003e 0xc4200e2780}","source":"search/search.go:179","time":"2018-04-05T17:20:53Z"}
-{"Q":"test","following":false,"level":"info","limit":25,"msg":"params","source":"search/search.go:112","time":"2018-04-05T17:23:00Z","timestamp":1522948980,"un":""}
-{"level":"info","msg":"{1522948980 25 test  0xc42019abc4}","source":"search/search.go:143","time":"2018-04-05T17:23:00Z"}
-{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522948980}}\"}, bson.Element{[embedded document]\"$text\": \"bson.Reader{bson.Element{[string]\\\"$search\\\": \\\"test\\\"}}\"}}","source":"search/search.go:170","time":"2018-04-05T17:23:00Z"}
-{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc4201bc488 0 \u003cnil\u003e 0xc42000d1c0}","source":"search/search.go:179","time":"2018-04-05T17:23:00Z"}
-{"Q":"NEW","following":false,"level":"info","limit":25,"msg":"params","source":"search/search.go:112","time":"2018-04-05T17:24:20Z","timestamp":1522949060,"un":""}
-{"level":"info","msg":"{1522949060 25 NEW  0xc4201f4133}","source":"search/search.go:143","time":"2018-04-05T17:24:20Z"}
-{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522949060}}\"}, bson.Element{[embedded document]\"$text\": \"bson.Reader{bson.Element{[string]\\\"$search\\\": \\\"NEW\\\"}}\"}}","source":"search/search.go:170","time":"2018-04-05T17:24:20Z"}
-{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc4201bcc90 0 \u003cnil\u003e 0xc4200e3660}","source":"search/search.go:179","time":"2018-04-05T17:24:20Z"}
+{"Q":"","following":true,"level":"info","limit":25,"msg":"params","source":"search/search.go:110","time":"2018-04-05T23:37:17Z","timestamp":1522971437,"un":"PLfxVYREIV"}
+{"level":"info","msg":"{1522971437 25  PLfxVYREIV 0xc420112d08}","source":"search/search.go:141","time":"2018-04-05T23:37:17Z"}
+{"level":"error","msg":"Could not find user in DB","source":"search/search.go:131","time":"2018-04-05T23:37:17Z"}
+{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522971437}}\"}, bson.Element{[string]\"username\": \"PLfxVYREIV\"}, bson.Element{[embedded document]\"username\": \"bson.Reader{bson.Element{[array]\\\"$in\\\": \\\"bson.Array[]\\\"}}\"}}","source":"search/search.go:168","time":"2018-04-05T23:37:17Z"}
+{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc42000edf8 0 \u003cnil\u003e 0xc4200cb240}","source":"search/search.go:177","time":"2018-04-05T23:37:18Z"}
+{"Q":"","following":true,"level":"info","limit":25,"msg":"params","source":"search/search.go:110","time":"2018-04-05T23:37:19Z","timestamp":1522971439,"un":"PLfxVYREIV"}
+{"level":"info","msg":"{1522971439 25  PLfxVYREIV 0xc42012e718}","source":"search/search.go:141","time":"2018-04-05T23:37:19Z"}
+{"level":"error","msg":"Could not find user in DB","source":"search/search.go:131","time":"2018-04-05T23:37:19Z"}
+{"level":"info","msg":"bson.Document{bson.Element{[embedded document]\"timestamp\": \"bson.Reader{bson.Element{[64-bit integer]\\\"$lte\\\": 1522971439}}\"}, bson.Element{[string]\"username\": \"PLfxVYREIV\"}, bson.Element{[embedded document]\"username\": \"bson.Reader{bson.Element{[array]\\\"$in\\\": \\\"bson.Array[]\\\"}}\"}}","source":"search/search.go:168","time":"2018-04-05T23:37:19Z"}
+{"level":"info","msg":"\u0026{{twitter tweets} 0 -1 0xc42000eff8 0 \u003cnil\u003e 0xc4200cb840}","source":"search/search.go:177","time":"2018-04-05T23:37:19Z"}

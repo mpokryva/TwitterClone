@@ -5,14 +5,14 @@ import (
     "context"
     "net/http"
     "os"
-    "github.com/onrik/logrus/filename"
-    log "github.com/sirupsen/logrus"
+    "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
     "TwitterClone/user"
     "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
+    "TwitterClone/wrappers"
 )
 
 type params struct {
@@ -42,29 +42,27 @@ type res struct {
 }
 
 var client *mongo.Client
-
+var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/search", search).Methods("POST")
     http.Handle("/", r)
-    log.AddHook(filename.NewHook())
     var err error
     client, err = mongo.NewClient("mongodb://mongo.db:27017")
+    if err != nil {
+        log.Fatal("Problem connecting to MongoDB")
+    }
     // Log to a file
-    f, err := os.OpenFile("search.log",
-    os.O_CREATE | os.O_RDWR, 0666)
+    var f *os.File
+    log, f, err = wrappers.FileLogger("search.log", os.O_CREATE | os.O_RDWR,
+        0666)
     if err != nil {
         log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetFormatter(&log.JSONFormatter{})
-    log.SetOutput(f)
-    log.SetLevel(log.DebugLevel)
-    if err != nil {
-        log.Fatal("Problem connecting to MongoDB")
-    }
+    log.SetLevel(logrus.DebugLevel)
     http.ListenAndServe(":8006", nil)
 }
 
@@ -78,7 +76,6 @@ func getUsername(r *http.Request) (string, error) {
 }
 
 func search(w http.ResponseWriter, req *http.Request) {
-    //debug, err := httputil.DumpRequest(req, true)
     decoder := json.NewDecoder(req.Body)
     var start params
     var r res
@@ -108,7 +105,7 @@ func search(w http.ResponseWriter, req *http.Request) {
       *def = true
       start.Following = def
     }
-    log.WithFields(log.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
+    log.WithFields(logrus.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
     "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
     //Generating the list of items
     itemList, err := generateList(start, req)
