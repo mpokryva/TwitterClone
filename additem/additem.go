@@ -45,7 +45,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.DebugLevel)
+    log.SetLevel(logrus.InfoLevel)
     log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
@@ -61,6 +61,7 @@ func checkLogin(r *http.Request) (string, error) {
 
 
 func insertItem(it *Item) (error, *objectid.ObjectID) {
+    start := time.Now()
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
     col := db.Collection("tweets")
@@ -83,6 +84,8 @@ func insertItem(it *Item) (error, *objectid.ObjectID) {
     _, err = col.InsertOne(
         context.Background(),
         doc)
+    elapsed := time.Since(start)
+    log.Info("Time elapsed: " + elapsed.String())
     if err != nil {
       log.Error(err.Error())
         return err, nil
@@ -141,11 +144,7 @@ func addItemEndpoint(it Item) response {
     } else {
         res.Status = "error"
         res.Error = "Invalid request."
-        log.Info("Invalid request!")
     }
-    log.WithFields(logrus.Fields{
-    "content": it.Content,
-    }).Info("About to return from adding the tweet")
     return res
 }
 
