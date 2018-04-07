@@ -62,7 +62,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.DebugLevel)
+    log.SetLevel(logrus.ErrorLevel)
     http.ListenAndServe(":8006", nil)
 }
 
@@ -159,6 +159,7 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
     for _,element := range followingList{
       bArray.Append(bson.EC.String("fUsername",element).Value())
     }
+    log.Info(bArray)
     doc.Append(bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", bArray)))
   }
   if(sPoint.Q != ""){
