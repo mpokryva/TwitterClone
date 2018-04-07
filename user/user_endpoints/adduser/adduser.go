@@ -6,7 +6,6 @@ import (
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
-    "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
     "crypto/md5"
     "encoding/hex"
@@ -15,6 +14,7 @@ import (
     "strconv"
     "golang.org/x/crypto/bcrypt"
     "TwitterClone/user"
+    "TwitterClone/wrappers"
 )
 
 type request struct {
@@ -42,7 +42,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func insertUser(user user.User, key string) bool {
-    client, err := mongo.NewClient("mongodb://mongo.db:27017")
+    client, err := wrappers.NewClient()
     if err != nil {
         log.Println("Panicking")
         panic(err)

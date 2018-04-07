@@ -7,10 +7,10 @@ import (
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
-    "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
     "golang.org/x/crypto/bcrypt"
     "TwitterClone/user"
+    "TwitterClone/wrappers"
 )
 
 
@@ -34,7 +34,7 @@ func main() {
 }
 
 func authUser(details userDetails) bool {
-    client, err := mongo.NewClient("mongodb://mongo.db:27017")
+    client, err := wrappers.NewClient()
     if err != nil {
         log.Error("Mongodb error")
         return false

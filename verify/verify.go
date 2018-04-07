@@ -7,8 +7,8 @@ import (
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
-    "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
+    "TwitterClone/wrappers"
 )
 
 type verification struct {
@@ -71,7 +71,7 @@ func validateParams(verif verification) bool {
 }
 
 func user_exists(verif verification) bool {
-    client, err := mongo.NewClient("mongodb://mongo.db:27017")
+    client, err := wrappers.NewClient()
     if err != nil {
         log.Error("Mongodb error")
         return false

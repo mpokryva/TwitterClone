@@ -7,9 +7,9 @@ import (
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
-    "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
+    "TwitterClone/wrappers"
 )
 
 type Item struct {
@@ -67,7 +67,7 @@ func getItemEndpoint(id string) response {
 
 func deleteItem(id string) response {
     var resp response 
-    client, err := mongo.NewClient("mongodb://mongo.db:27017")
+    client, err := wrappers.NewClient()
     if err != nil {
         log.Error("Error connecting to database")
         resp.Status = "error"
@@ -105,7 +105,7 @@ func getItem(id string) response {
     var info Item
     var resp response 
     var prop property
-    client, err := mongo.NewClient("mongodb://mongo.db:27017")
+    client, err := wrappers.NewClient()
     if err != nil {
         log.Error("Error connecting to database")
         resp.Status = "error"

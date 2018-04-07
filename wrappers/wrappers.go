@@ -21,7 +21,7 @@ func NewClient() (*mongo.Client, error) {
     }
     var err error
     client, err = mongo.NewClient("mongodb://mongo.db:27017")
-    if (err != nil) {
+    if err != nil {
         log.Error(err)
     }
     return client, err
