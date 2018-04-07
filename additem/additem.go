@@ -28,6 +28,7 @@ type response struct {
     ID string  `json:"id,omitempty"`
     Error string `json:"error,omitempty"`
 }
+
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
@@ -44,7 +45,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
+    log.SetLevel(logrus.DebugLevel)
     log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
