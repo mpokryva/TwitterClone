@@ -8,7 +8,6 @@ import (
     "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
-    "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "TwitterClone/wrappers"
@@ -29,7 +28,6 @@ type response struct {
     ID string  `json:"id,omitempty"`
     Error string `json:"error,omitempty"`
 }
-var client *mongo.Client
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
@@ -47,10 +45,6 @@ func main() {
     f.Seek(0, 0)
     defer f.Close()
     log.SetLevel(logrus.ErrorLevel)
-    client, err = wrappers.NewClient()
-    if err != nil {
-        log.Fatal("Failed to establish Mongo connection.")
-    }
     log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
@@ -66,6 +60,7 @@ func checkLogin(r *http.Request) (string, error) {
 
 
 func insertItem(it *Item) (error, *objectid.ObjectID) {
+    client, err := wrappers.NewClient()
     db := client.Database("twitter")
     col := db.Collection("tweets")
     id := objectid.New()
@@ -84,7 +79,7 @@ func insertItem(it *Item) (error, *objectid.ObjectID) {
     if it.ChildType != nil {
         doc.Append(bson.EC.String("childType", *(it.ChildType)))
     }
-    _, err := col.InsertOne(
+    _, err = col.InsertOne(
         context.Background(),
         doc)
     if err != nil {
