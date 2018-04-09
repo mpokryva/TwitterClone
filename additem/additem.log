@@ -1,0 +1,5 @@
+{"level":"debug","msg":"5acb08369b27aa1345fe49d1","source":"additem/additem.go:118","time":"2018-04-09T18:12:12Z"}
+{"level":"debug","msg":"{ObjectID(\"000000000000000000000000\") Miki {0} 0 testing 0 retweet ObjectID(\"5acb08369b27aa1345fe49d1\") [ObjectID(\"5acb08369b27aa1345fe49d1\") ObjectID(\"5acb08369b27aa1345fe49d1\")]}","source":"additem/additem.go:134","time":"2018-04-09T18:12:12Z"}
+{"level":"debug","msg":"5acbacfce1736ee4556ef22d","source":"additem/additem.go:67","time":"2018-04-09T18:12:12Z"}
+{"level":"debug","msg":"{ObjectID(\"5acbacfce1736ee4556ef22d\") Miki {0} 0 testing 1523297532 retweet ObjectID(\"5acb08369b27aa1345fe49d1\") [ObjectID(\"5acb08369b27aa1345fe49d1\") ObjectID(\"5acb08369b27aa1345fe49d1\")]}","source":"additem/additem.go:70","time":"2018-04-09T18:12:12Z"}
+{"level":"info","msg":"Time elapsed: 3.879281ms","source":"additem/additem.go:73","time":"2018-04-09T18:12:12Z"}

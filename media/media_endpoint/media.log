@@ -1,0 +1,2 @@
+{"level":"debug","msg":"5acbc9d52f458fd76b2648e0","source":"media_endpoints/media.go:39","time":"2018-04-09T20:26:06Z"}
+{"level":"debug","msg":"{ObjectID(\"5acbc9d52f458fd76b2648e0\") [215 109 248]}","source":"media_endpoints/media.go:63","time":"2018-04-09T20:26:06Z"}

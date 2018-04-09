@@ -16,4 +16,5 @@
 *.log
 # All files except .go files
 *
-!**/*.*
+!*.*
+!*/
