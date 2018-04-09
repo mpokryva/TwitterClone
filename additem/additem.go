@@ -58,7 +58,7 @@ func checkLogin(r *http.Request) (string, error) {
 }
 
 
-func insertItem(it item.Item) (error, *objectid.ObjectID) {
+func insertItem(it item.Item) (objectid.ObjectID, error) {
     start := time.Now()
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
@@ -68,14 +68,15 @@ func insertItem(it item.Item) (error, *objectid.ObjectID) {
     it.ID = id
     it.Timestamp = time.Now().Unix()
     log.Debug(it)
+    var nilObjectID objectid.ObjectID
     _, err = col.InsertOne(context.Background(), &it)
     elapsed := time.Since(start)
     log.Info("Time elapsed: " + elapsed.String())
     if err != nil {
-      log.Error(err.Error())
-        return err, nil
+         log.Error(err.Error())
+        return nilObjectID, err
     } else {
-        return nil, &id
+        return id, nil
     }
 }
 
@@ -133,7 +134,7 @@ func addItemEndpoint(it item.Item) response {
     var res response
     log.Debug(it)
     // Add the Item.
-    err, id := insertItem(it)
+    id, err := insertItem(it)
     if err != nil {
         log.Error("Item could not be inserted into database.")
         res.Status = "error"
