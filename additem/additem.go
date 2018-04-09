@@ -5,22 +5,18 @@ import (
     "net/http"
     "time"
     "os"
+    "reflect"
     "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
-    "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "TwitterClone/wrappers"
+    "TwitterClone/item"
 )
 
-type Item struct {
-    ID objectid.ObjectID
-    Username string `json:"username"`
+type request struct {
     Content *string `json:"content"`
     ChildType *string `json:"childType,omitempty"`
-    Likes int32 `json:"likes"`
-    Retweeted int32 `json:"retweeted"`
-    Timestamp int64 `json:"timestamp"`
 }
 
 type response struct {
@@ -45,7 +41,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.InfoLevel)
+    log.SetLevel(logrus.DebugLevel)
     log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
@@ -60,7 +56,7 @@ func checkLogin(r *http.Request) (string, error) {
 }
 
 
-func insertItem(it *Item) (error, *objectid.ObjectID) {
+func insertItem(it item.Item) (error, *objectid.ObjectID) {
     start := time.Now()
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
@@ -68,22 +64,12 @@ func insertItem(it *Item) (error, *objectid.ObjectID) {
     id := objectid.New()
     log.Debug(id.Hex())
     it.ID = id
+    log.Info(reflect.TypeOf(objectid.ObjectID{}))
     it.Timestamp = time.Now().Unix()
-    it.Likes = 0
+    it.Property.Likes = 0
     it.Retweeted = 0
-    log.Debug(*it)
-    doc := bson.NewDocument(bson.EC.ObjectID("_id", id),
-            bson.EC.String("username", it.Username),
-            bson.EC.String("content", *(it.Content)),
-        bson.EC.Int32("likes", it.Likes),
-        bson.EC.Int32("retweeted", it.Retweeted),
-        bson.EC.Int64("timestamp", it.Timestamp))
-    if it.ChildType != nil {
-        doc.Append(bson.EC.String("childType", *(it.ChildType)))
-    }
-    _, err = col.InsertOne(
-        context.Background(),
-        doc)
+    log.Debug(it)
+    _, err = col.InsertOne(context.Background(), &it)
     elapsed := time.Since(start)
     log.Info("Time elapsed: " + elapsed.String())
     if err != nil {
@@ -94,11 +80,11 @@ func insertItem(it *Item) (error, *objectid.ObjectID) {
     }
 }
 
-func decodeRequest(r *http.Request) (Item, error) {
+func decodeRequest(r *http.Request) (request, error) {
     decoder := json.NewDecoder(r.Body)
-    var it Item
-    err := decoder.Decode(&it)
-    return it, err
+    var req request
+    err := decoder.Decode(&req)
+    return req, err
 }
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {
@@ -112,49 +98,54 @@ func addItemHandler(w http.ResponseWriter, r *http.Request) {
       log.Error("User not logged in")
         res.Status = "error"
         res.Error = "User not logged in."
-    } else {
-        it, err := decodeRequest(r)
-        if (err != nil) {
-          log.Error("JSON decoding error")
-            res.Status = "error"
-            res.Error = "JSON decoding error."
-        } else {
-            it.Username = username
-            res = addItemEndpoint(it)
-        }
+        return
     }
-    encodeResponse(w, res)
-}
-
-func addItemEndpoint(it Item) response {
-    var res response
-    log.Debug(it)
-    valid := validateItem(it)
+    req, err := decodeRequest(r)
+    if (err != nil) {
+        log.Error("JSON decoding error")
+        res.Status = "error"
+        res.Error = "JSON decoding error."
+        return
+    }
+    valid := validateRequest(req)
     if valid {
-        // Add the Item.
-        err, id := insertItem(&it)
-        if err != nil {
-            log.Error("Item could not be inserted into database.")
-            res.Status = "error"
-            res.Error = err.Error()
-        } else {
-            res.Status = "OK"
-            res.ID = id.Hex()
+        var it item.Item
+        it.Content = *req.Content
+        if req.ChildType != nil {
+            it.ChildType = *req.ChildType
         }
+        it.Username = username
+        res = addItemEndpoint(it)
     } else {
         res.Status = "error"
         res.Error = "Invalid request."
     }
+    encodeResponse(w, res)
+}
+
+func addItemEndpoint(it item.Item) response {
+    var res response
+    log.Debug(it)
+    // Add the Item.
+    err, id := insertItem(it)
+    if err != nil {
+        log.Error("Item could not be inserted into database.")
+        res.Status = "error"
+        res.Error = err.Error()
+    } else {
+        res.Status = "OK"
+        res.ID = id.Hex()
+    }
     return res
 }
 
-func validateItem(it Item) bool {
+func validateRequest(req request) bool {
     valid := true
-    if (it.Content == nil) {
+    if (req.Content == nil) {
         valid = false
-    } else if (it.ChildType == nil) {
+    } else if (req.ChildType == nil) {
         valid = true
-    } else if (*it.ChildType != "retweet" && *it.ChildType != "reply") {
+    } else if (*req.ChildType != "retweet" && *req.ChildType != "reply") {
         // Invalid r
         log.Debug("childType not valid")
         valid = false
