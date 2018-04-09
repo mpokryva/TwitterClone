@@ -15,7 +15,5 @@
 # Log files
 *.log
 # All files except .go files
-!**/*.go
-**/*
-!**/
-!.gitignore
+*
+!**/*.*
