@@ -33,7 +33,6 @@ func main() {
     log.Fatal(http.ListenAndServe(":8009", nil))
 }
 
-
 func checkLogin(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
     if err != nil {
@@ -151,7 +150,8 @@ func followHandler(w http.ResponseWriter, r *http.Request) {
         } else {
             log.WithFields(log.Fields{
                 "username": *it.Username,
-                "follow": *it.Follow}).Info()
+                "follow": *it.Follow,
+                "currentUser": username}).Info()
             res = followEndpoint(username, it)
         }
     }
