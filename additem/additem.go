@@ -5,7 +5,7 @@ import (
     "net/http"
     "time"
     "os"
-    "reflect"
+    "errors"
     "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -17,6 +17,8 @@ import (
 type request struct {
     Content *string `json:"content"`
     ChildType *string `json:"childType,omitempty"`
+    ParentID *string `json:"parent,omitempty"`
+    MediaIDs *[]string `json:"media,omitempty"`
 }
 
 type response struct {
@@ -64,10 +66,7 @@ func insertItem(it item.Item) (error, *objectid.ObjectID) {
     id := objectid.New()
     log.Debug(id.Hex())
     it.ID = id
-    log.Info(reflect.TypeOf(objectid.ObjectID{}))
     it.Timestamp = time.Now().Unix()
-    it.Property.Likes = 0
-    it.Retweeted = 0
     log.Debug(it)
     _, err = col.InsertOne(context.Background(), &it)
     elapsed := time.Since(start)
@@ -107,18 +106,25 @@ func addItemHandler(w http.ResponseWriter, r *http.Request) {
         res.Error = "JSON decoding error."
         return
     }
-    valid := validateRequest(req)
-    if valid {
+    pOID, mOIDs, err := validateRequest(req)
+    if err == nil {
         var it item.Item
         it.Content = *req.Content
         if req.ChildType != nil {
             it.ChildType = *req.ChildType
         }
+        if req.ParentID != nil {
+            it.ParentID = pOID
+            log.Debug(*req.ParentID)
+        }
+        if req.MediaIDs != nil {
+            it.MediaIDs = mOIDs
+        }
         it.Username = username
         res = addItemEndpoint(it)
     } else {
         res.Status = "error"
-        res.Error = "Invalid request."
+        res.Error = err.Error()
     }
     encodeResponse(w, res)
 }
@@ -139,16 +145,34 @@ func addItemEndpoint(it item.Item) response {
     return res
 }
 
-func validateRequest(req request) bool {
-    valid := true
-    if (req.Content == nil) {
-        valid = false
-    } else if (req.ChildType == nil) {
-        valid = true
+func validateRequest(req request) (objectid.ObjectID, []objectid.ObjectID, error) {
+    var pOID objectid.ObjectID
+    var mOIDs []objectid.ObjectID
+    var err error
+    if req.Content == nil {
+        err = errors.New("Null content")
+    } else if req.ChildType == nil {
+        if req.ParentID != nil {
+            err = errors.New("Parent not null when childType is")
+        }
     } else if (*req.ChildType != "retweet" && *req.ChildType != "reply") {
-        // Invalid r
-        log.Debug("childType not valid")
-        valid = false
+        err = errors.New("Child type not valid")
+    } else if req.ParentID == nil {
+        err = errors.New("Parent must be set when child type exists.")
+    } else {
+
+        pOID, err = objectid.FromHex(*req.ParentID)
     }
-    return valid
+    if err == nil && req.MediaIDs != nil {
+        for _, mID := range *req.MediaIDs {
+            mOID, idErr := objectid.FromHex(mID)
+            if err == nil {
+                mOIDs = append(mOIDs, mOID)
+            } else {
+                err = idErr
+                break
+            }
+        }
+    }
+    return pOID, mOIDs, err
 }
