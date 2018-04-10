@@ -5,7 +5,8 @@ import (
     "net/http"
     "time"
     "os"
-    "errors"
+    "io"
+    "bytes"
     "github.com/sirupsen/logrus"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -13,10 +14,6 @@ import (
     "TwitterClone/wrappers"
     "TwitterClone/media"
 )
-
-type request struct {
-    Content []byte `json:"content"`
-}
 
 type response struct {
     Status string `json:"status"`
@@ -54,52 +51,52 @@ func checkLogin(r *http.Request) (string, error) {
     }
 }
 
-
-func decodeRequest(r *http.Request) (request, error) {
-    decoder := json.NewDecoder(r.Body)
-    var req request
-    err := decoder.Decode(&req)
-    return req, err
-}
-
 func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
+}
+
+func errResponse(err error) response {
+    var res response
+    res.Status = "error"
+    res.Error = err.Error()
+    return res
 }
 
 func addItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     username, err := checkLogin(r)
     if err != nil {
-      log.Error("User not logged in")
-        res.Status = "error"
-        res.Error = "User not logged in."
+        log.Error(err)
+        encodeResponse(w, errResponse(err))
         return
     }
-    _, header, err := r.FormFile("content")
-    log.Debug(header)
-    req, err := decodeRequest(r)
-    if (err != nil) {
-        log.Error("JSON decoding error")
-        res.Status = "error"
-        res.Error = "JSON decoding error."
+    content, header, err := r.FormFile("content") // Get binary payload.
+    if err != nil {
+        log.Error(err)
+        encodeResponse(w, errResponse(err))
         return
     }
-    err = validateRequest(req)
-    if err == nil {
-        var m media.Media
-        m.Content = req.Content
-        m.Username = username
-        res = addMediaEndpoint(m)
-    } else {
-        res.Status = "error"
-        res.Error = err.Error()
+    defer content.Close()
+    log.Debug(header.Header)
+    bufContent := bytes.NewBuffer(nil)
+    if _, err := io.Copy(bufContent, content); err != nil {
+        log.Error(err)
+        encodeResponse(w, errResponse(err))
+        return
     }
+    buf := bufContent.Bytes()
+    var m media.Media
+    if header != nil {
+        m.Header = *header
+    }
+    m.Content = buf
+    m.Username = username
+    res = addMediaEndpoint(m)
     encodeResponse(w, res)
 }
 
 func addMediaEndpoint(m media.Media) response {
     var res response
-    log.Debug(m)
     // Add the Media.
     oid, err := insertMedia(m)
     if err != nil {
@@ -114,31 +111,23 @@ func addMediaEndpoint(m media.Media) response {
 }
 
 func insertMedia(m media.Media) (objectid.ObjectID, error) {
+    var nilObjectID objectid.ObjectID
     start := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
-
+        return nilObjectID, err
     }
     db := client.Database("twitter")
     col := db.Collection("media")
     id := objectid.New()
     m.ID = id
-    log.Debug(m)
     _, err = col.InsertOne(context.Background(), &m)
     elapsed := time.Since(start)
     log.Info("Time elapsed: " + elapsed.String())
-    var nilObjectID objectid.ObjectID
     if err != nil {
         log.Error(err.Error())
         return nilObjectID, err
     } else {
         return id, nil
-    }
-}
-func validateRequest(req request) error {
-    if req.Content != nil {
-        return nil
-    } else {
-        return errors.New("Media content is null.")
     }
 }
