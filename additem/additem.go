@@ -10,6 +10,8 @@ import (
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
+    "github.com/mongodb/mongo-go-driver/bson"
+    "github.com/mongodb/mongo-go-driver/mongo"
     "TwitterClone/wrappers"
     "TwitterClone/item"
 )
@@ -63,9 +65,9 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
     col := db.Collection("tweets")
-    id := objectid.New()
-    log.Debug(id.Hex())
-    it.ID = id
+    oid := objectid.New()
+    log.Debug(oid.Hex())
+    it.ID = oid
     it.Timestamp = time.Now().Unix()
     log.Debug(it)
     var nilObjectID objectid.ObjectID
@@ -73,10 +75,31 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
     elapsed := time.Since(start)
     log.Info("Time elapsed: " + elapsed.String())
     if err != nil {
-         log.Error(err.Error())
+         log.Error(err)
         return nilObjectID, err
+    }
+    // Update media which item references.
+    var result *mongo.UpdateResult
+    if it.MediaIDs != nil {
+        col = db.Collection("media")
+        bArray := bson.NewArray()
+        for _, mOID := range it.MediaIDs {
+            bArray.Append(bson.VC.ObjectID(mOID))
+        }
+        filter := bson.NewDocument(
+            bson.EC.SubDocumentFromElements("_id",
+            bson.EC.Array("$in", bArray)))
+        update := bson.NewDocument(
+            bson.EC.SubDocumentFromElements("$addToSet",
+            bson.EC.ObjectID("item_ids", oid)))
+            result, err = col.UpdateMany(context.Background(), filter, update)
+            log.Debug(result)
+    }
+    if err != nil {
+        log.Error(err)
+        return nilObjectID, nil
     } else {
-        return id, nil
+        return oid, nil
     }
 }
 
