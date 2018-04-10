@@ -24,7 +24,7 @@ type response struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/addmedia", addItemHandler).Methods("POST")
+    r.HandleFunc("/addmedia", addMediaHandler).Methods("POST")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -62,7 +62,7 @@ func errResponse(err error) response {
     return res
 }
 
-func addItemHandler(w http.ResponseWriter, r *http.Request) {
+func addMediaHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     username, err := checkLogin(r)
     if err != nil {
