@@ -72,14 +72,28 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
     log.Debug(it)
     var nilObjectID objectid.ObjectID
     _, err = col.InsertOne(context.Background(), &it)
-    elapsed := time.Since(start)
-    log.Info("Time elapsed: " + elapsed.String())
     if err != nil {
-         log.Error(err)
+        log.Error(err)
         return nilObjectID, err
     }
-    // Update media which item references.
     var result *mongo.UpdateResult
+    if it.ChildType == "retweet" {
+        // Increment retweet counter of parent.
+        filter := bson.NewDocument(bson.EC.ObjectID("_id", it.ParentID))
+        update := bson.NewDocument(
+            bson.EC.SubDocumentFromElements("$inc",
+            bson.EC.Int32("retweeted", 1)))
+        result, err = col.UpdateOne(context.Background(), filter, update)
+        if err != nil {
+            log.Error(err)
+            return nilObjectID, err
+        } else if result.ModifiedCount != 1 {
+            err = errors.New("Referenced Parent ID not found")
+            log.Error(err)
+            return nilObjectID, err
+        }
+    }
+    // Update media which item references.
     if it.MediaIDs != nil {
         col = db.Collection("media")
         bArray := bson.NewArray()
@@ -93,14 +107,18 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
             bson.EC.SubDocumentFromElements("$addToSet",
             bson.EC.ObjectID("item_ids", oid)))
             result, err = col.UpdateMany(context.Background(), filter, update)
-            log.Debug(result)
+        if err != nil {
+            log.Error(err)
+            return nilObjectID, err
+        } else if result.ModifiedCount != 1 {
+            err = errors.New("Media item_ids not updated. Probably invalid ids.")
+            log.Error(err)
+            return nilObjectID, err
+        }
     }
-    if err != nil {
-        log.Error(err)
-        return nilObjectID, nil
-    } else {
-        return oid, nil
-    }
+    elapsed := time.Since(start)
+    log.Info("Time elapsed: " + elapsed.String())
+    return oid, nil
 }
 
 func decodeRequest(r *http.Request) (request, error) {
