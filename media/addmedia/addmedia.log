@@ -1,2 +1,34 @@
-{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"ER-Diagram.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-10T02:48:07Z"}
-{"level":"info","msg":"Time elapsed: 7.46701ms","source":"addmedia/addmedia.go:126","time":"2018-04-10T02:48:07Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:45:44Z"}
+{"level":"info","msg":"Time elapsed: 10.70616ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:45:44Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:45:51Z"}
+{"level":"info","msg":"Time elapsed: 9.693061ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:45:51Z"}
+{"level":"debug","msg":"map[Content-Type:[image/png] Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:45:52Z"}
+{"level":"info","msg":"Time elapsed: 8.575141ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:45:52Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:45:53Z"}
+{"level":"info","msg":"Time elapsed: 6.159859ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:45:53Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:45:53Z"}
+{"level":"info","msg":"Time elapsed: 3.767969ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:45:53Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:03Z"}
+{"level":"info","msg":"Time elapsed: 9.060536ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:03Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:04Z"}
+{"level":"info","msg":"Time elapsed: 3.099926ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:04Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:05Z"}
+{"level":"info","msg":"Time elapsed: 3.41032ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:05Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:06Z"}
+{"level":"info","msg":"Time elapsed: 8.516296ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:06Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:06Z"}
+{"level":"info","msg":"Time elapsed: 3.269601ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:07Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:07Z"}
+{"level":"info","msg":"Time elapsed: 3.407743ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:07Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:08Z"}
+{"level":"info","msg":"Time elapsed: 3.375072ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:08Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:09Z"}
+{"level":"info","msg":"Time elapsed: 3.612929ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:09Z"}
+{"level":"debug","msg":"map[Content-Type:[image/png] Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:10Z"}
+{"level":"info","msg":"Time elapsed: 3.930551ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:10Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:10Z"}
+{"level":"info","msg":"Time elapsed: 7.161813ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:10Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:12Z"}
+{"level":"info","msg":"Time elapsed: 3.661999ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:12Z"}
+{"level":"debug","msg":"map[Content-Disposition:[form-data; name=\"content\"; filename=\"Fb-button.png\"] Content-Type:[image/png]]","source":"addmedia/addmedia.go:80","time":"2018-04-13T17:46:13Z"}
+{"level":"info","msg":"Time elapsed: 4.294958ms","source":"addmedia/addmedia.go:126","time":"2018-04-13T17:46:13Z"}

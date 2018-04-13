@@ -15,6 +15,10 @@ import (
     "TwitterClone/item"
 )
 
+type Like struct {
+    ID objectid.ObjectID `json:"id" bson:"_id"`
+    Username string `json:"username" bson:"username"`
+}
 
 type response struct {
     Status string `json:"status"`
@@ -22,10 +26,21 @@ type response struct {
     Error string `json:"error,omitempty"`
 }
 
+//response for Like
+type responseL struct {
+    Status string `json:"status"`
+    Error string `json:"error,omitempty"`
+}
+
+//post params for like
+type Req struct {
+    Like *bool `json:"like"`
+}
+
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/item/{id}", getItemHandler).Methods("GET")
-    //r.HandleFunc("/item/{id}/like", likeItemHandler).Methods("POST")
+    r.HandleFunc("/item/{id}/like", likeItemHandler).Methods("POST")
     r.HandleFunc("/item/{id}", deleteItemHandler).Methods("DELETE")
     log.AddHook(filename.NewHook())
     log.SetLevel(log.DebugLevel)
@@ -34,54 +49,55 @@ func main() {
 }
 
 //LIKE ITEM FUNCTIONS START HERE
-/*
+
 func likeItemHandler(w http.ResponseWriter, r *http.Request) {
     id := mux.Vars(r)["id"]
     log.Debug(id)
 
-    var res response
+    var res responseL
     username, err := checkLogin(r)
     if err != nil {
       log.Error("User not logged in")
         res.Status = "error"
         res.Error = "User not logged in."
     } else {
-        like, err := decodeRequest(r)
+        req, err := decodeRequest(r)
         if (err != nil) {
+          log.Error(r)
           log.Error("JSON decoding error")
             res.Status = "error"
             res.Error = "JSON decoding error."
         } else {
-            //res = likeItemEndpoint(id, username, like)
+            res = likeItemEndpoint(id, username, *req.Like)
             
         }
     }
     encodeResponse(w, res)
 }
-*/
-func decodeRequest(r *http.Request) (bool, error) {
+
+func decodeRequest(r *http.Request) (Req, error) {
     decoder := json.NewDecoder(r.Body)
-    var like bool;
+    var like Req
     err := decoder.Decode(&like)
     return like, err
 }
-/*
-func likeItemEndpoint(id string, username string, like bool) response {
-    return likeItem(id, username)
-}*/
-/*
-func likeItem(id string, username string, like bool) response {
-    var resp response
+
+func likeItemEndpoint(id string, username string, like bool) responseL {
+    return likeItem(id, username, like)
+}
+
+func likeItem(id string, username string, like bool) responseL {
+    var resp responseL
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
-    col := db.Collection("tweets")
+    // col := db.Collection("users")
 
-    if err != nil {
-        log.Error("Error connecting to database")
-        resp.Status = "error"
-        resp.Error = "Database unavailable"
-        return resp
-    }
+    // if err != nil {
+    //     log.Error("Error connecting to database")
+    //     resp.Status = "error"
+    //     resp.Error = "Database unavailable"
+    //     return resp
+    // }
 
     objectid,err := objectid.FromHex(id)
     if err != nil {
@@ -90,35 +106,80 @@ func likeItem(id string, username string, like bool) response {
         return resp
     }
 
-	// Check if user to like exists.
-    // Assuming that logged in user exists (not bogus cookie).
-    checkUserFilter := bson.NewDocument(
-        bson.EC.String("username", username))
-    err = col.FindOne(context.Background(), checkUserFilter)
+	// // Check if user liking exists.
+ //    // Assuming that logged in user exists (not bogus cookie).
+ //    checkUserFilter := bson.NewDocument(
+ //        bson.EC.String("username", username))
+ //    err = col.FindOne(context.Background(), checkUserFilter)
+ //    if err != nil {
+ //        log.Info("User does not exist")
+ //        resp.Status = "error"
+ //        resp.Error = "User in cookie does not exist"
+ //        return resp
+ //    }
+
+    col := db.Collection("likes")
     if err != nil {
-        log.Info(err)
-        return errors.New("User doesn't exist.")
+        log.Error("Error connecting to database")
+        resp.Status = "error"
+        resp.Error = "Database unavailable"
+        return respe object into db (username, itemid) *IF NOT EXISTS maybe*
+    //////////////////
+    //THIS IS BROKEN
     }
+    if like {
+    // log.Debug("We are liking")
+    var likeItem Like
+    likeItem.ID = objectid
+    likeItem.Username = username
+    //insert lik
+    //////////////////
+
+    _, err = col.InsertOne(context.Background(), &likeItem)
+        if err != nil {
+            log.Info("Error adding to likes collection")
+            resp.Status = "error"
+            resp.Error = "Error liking please try again"
+            return resp
+        }
+    }else{
+    //delete like object from db (username, itemid)
+    var likeItem Like
+    likeItem.ID = objectid
+    likeItem.Username = username
+    _, err = col.DeleteOne(context.Background(), &likeItem)
+        if err != nil {
+            log.Info("User does not have an entry in likes for this itemid")
+            resp.Status = "error"
+            resp.Error = "You have not liked this tweet before"
+            return resp
+        }        
+    }
+    col = db.Collection("tweets")
+
     // Are we incrementing or decrementing the number of likes?
-    var listOp string
     var countInc int32
     if like {
-        listOp = "$addToSet"
         countInc = 1
     } else {
-        listOp = "$pull"
         countInc = -1
     }
 
     // Update like count.
+    //////////////////
+    //THIS IS BROKEN or MAYBE I PUT THE WRONG OBJECTID IN POSTMAN??
+    //i think my query is wwrong..
+    //http://130.245.170.tem/5acd9afc5b97328b39569268/like
+    //{"status":"error","error":"Invalid Item ID"}
+    //////////////////
     filter := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
     update := bson.NewDocument(bson.EC.SubDocumentFromElements("$inc",
-    bson.EC.Int32("likes", countInc)))
-    err = UpdateOne(coll, filter, update)
+        bson.EC.Int32("property.likes", countInc)))
+    err = UpdateOne(col, filter, update)
     if err != nil {
         log.Error("Did not find ObjectID")
         resp.Status = "error"
-        resp.Error = "Invalid Item ID"
+        resp.Error = "Invalid 65/iItem ID"
         return resp
     }
     resp.Status = "OK"
@@ -126,7 +187,7 @@ func likeItem(id string, username string, like bool) response {
     // log.Debug("Encoded!")
     return resp
 }
-*/
+
 func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) error {
     result, err := coll.UpdateOne(
         context.Background(),
@@ -192,51 +253,6 @@ func getItem(id string) response {
         resp.Error = err.Error()
         return resp
     }
-    /*
-    for item.Next(context.Background()){
-        row := bson.NewDocument()
-        err = item.Decode(row)
-
-        res, err4 := row.Lookup("content")
-        if err4 == nil{
-          info.Content = res.Value().StringValue()
-        }
-        res, err4 = row.Lookup("_id")
-        if err4 == nil{
-          info.ID = res.Value().ObjectID().Hex()
-        }
-        res, err4 = row.Lookup("username")
-        if err4 == nil{
-          info.Username = res.Value().StringValue()
-        }
-        res, err4 = row.Lookup("likes")
-        if err4 == nil{
-          prop.Likes = (int)(res.Value().Int32())
-          info.Property = prop
-        }
-        res, err4 = row.Lookup("retweeted")
-        if err4 == nil{
-          info.Retweeted = (int)(res.Value().Int32())
-        }
-        res, err4 = row.Lookup("timestamp")
-        if err4 == nil{
-          info.Timestamp= res.Value().Int64()
-        }
-        res, err4 = row.Lookup("childType")
-        if err4 == nil{
-          info.Timestamp= res.Value().StringValue()
-        }
-        res, err4 = row.Lookup("parent")
-        if err4 == nil{
-          info.Timestamp= res.Value().ObjectID().Hex()
-        }
-        res, err4 = row.Lookup("media")
-        if err4 == nil{
-        	//UPDATE THIS TO RETRIEVE THE MEDIA ID's
-          info.Timestamp= res.Value().Int64()
-        }
-    }
-    */
     resp.Status = "OK"
     resp.Item = item
     return resp
@@ -271,6 +287,42 @@ func deleteItem(id string) response {
     if err != nil {
         resp.Status = "error"
         resp.Error = "Invalid Item ID"
+        return resp
+    }
+    var it Item
+    doc := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
+    err = col.FindOne(context.Background(), doc).Decode(&it)
+    if err != nil {
+        log.Info("User does not exist")
+        resp.Status = "error"
+        resp.Error = "User in cookie does not exist"
+        return resp
+    }
+
+    var result *mongo.UpdateResult
+    if it.MediaIDs != nil {
+        col = db.Collection("media")
+        bArray := bson.NewArray()
+        for _, mOID := range it.MediaIDs {
+            bArray.Append(bson.VC.ObjectID(mOID))
+        }
+        filter := bson.NewDocument(
+            bson.EC.SubDocumentFromElements("_id",
+            bson.EC.Array("$in", bArray)))
+        update := bson.NewDocument(
+            bson.EC.SubDocumentFromElements("$pull",
+            bson.EC.ObjectID("item_ids", oid)))
+            result, err = col.UpdateMany(context.Background(), filter, update)
+            log.Debug(result)
+    }
+    if err != nil {
+        log.Error("Deleting media ID('s) broke")
+        resp.Status = "error"
+        resp.Error = "Invalid Media ID in array"
+        return resp
+    } else {
+        resp.Status = "OK"
+        resp.Error = ""
         return resp
     }
 
