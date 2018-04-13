@@ -13,6 +13,7 @@ import (
     "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "TwitterClone/wrappers"
+    "TwitterClone/item"
 )
 
 type params struct {
@@ -21,23 +22,19 @@ type params struct {
     Q string `json:"q,omitempty"`
     Un string `json:"username,omitempty"`
     Following *bool `json:"following,omitempty"`
+    Rank *string `json:"rank,omitempty"`
+    Replies *bool `json:"replies"`
+    HasMedia bool `json:"hasMedia"`
+    Parent *string `json:"parent"`
 }
 
-type Item struct {
-    ID objectid.ObjectID `json:"-" bson:"_id"`
-    IdString string `json:"id" bson:"id"`
-    Content string `json:"content" bson:"content"`
-    Username string `json:"username" bson:"username"`
-    Property property `json:"property" bson:"property"`
-    Retweeted int `json:"retweeted" bson:"retweeted"`
-    Timestamp int64 `json:"timestamp" bson:"timestamp"`
-}
 type property struct {
   Likes int `json:"likes"`
 }
+
 type res struct {
   Status string `json:"status"`
-  Items []Item `json:"items"`
+  Items []item.Item `json:"items"`
   Error string `json:"error,omitempty"`
 }
 
@@ -57,7 +54,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
+    log.SetLevel(logrus.InfoLevel)
     http.ListenAndServe(":8006", nil)
 }
 
@@ -100,6 +97,16 @@ func search(w http.ResponseWriter, req *http.Request) {
       *def = true
       start.Following = def
     }
+    if(start.Rank == nil){
+      def := new(string)
+      *def = "interest"
+      start.Rank = def
+    }
+    if(start.Replies == nil){
+      def := new(bool)
+      *def = true
+      start.Replies = def
+    }
     log.WithFields(logrus.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
     "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
     //Generating the list of items
@@ -130,7 +137,7 @@ func getFollowingList(username string, db mongo.Database) ([]string){
 
 }
 
-func generateList(sPoint params, r *http.Request) ([]Item, error){
+func generateList(sPoint params, r *http.Request) ([]item.Item, error){
   //Connecting to db and setting up the collection
   client, err := wrappers.NewClient()
   if err != nil {
@@ -141,17 +148,17 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
   db := client.Database("twitter")
   col := db.Collection("tweets")
 
-  var tweetList []Item
-  var info Item
+  var tweetList []item.Item
+  var info item.Item
   //var prop property
   user,err := getUsername(r)
   if err != nil{
     log.Error(err)
     return nil,err
   }
-  doc := bson.NewDocument(bson.EC.SubDocumentFromElements("timestamp",bson.EC.Int64("$lte", (int64)(sPoint.Timestamp),)))
+  doc := bson.NewArray(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.SubDocumentFromElements("timestamp",bson.EC.Int64("$lte", (int64)(sPoint.Timestamp)),),),))
   if(sPoint.Un != ""){
-    doc.Append(bson.EC.String("username",sPoint.Un))
+    doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.String("username",sPoint.Un))))
   }
   if(*(sPoint.Following) == true){
     followingList:=getFollowingList(user,*db)
@@ -160,13 +167,32 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
       bArray.Append(bson.EC.String("fUsername",element).Value())
     }
     log.Info(bArray)
-    doc.Append(bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", bArray)))
+    doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", bArray)))))
   }
   if(sPoint.Q != ""){
-      doc.Append(bson.EC.Regex("content", sPoint.Q, ""))
+      doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.Regex("content", sPoint.Q, ""))))
+  }
+  if(*(sPoint.Rank) == "interest"){
+    log.Info("Interest is the ranking")
+    doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$sort",bson.EC.Int32("property.likes", -1),bson.EC.Int32("retweeted", -1))))
+  }
+
+  if(*(sPoint.Replies) == false){
+    //exclude reply tweets
+    doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.SubDocumentFromElements("username",bson.EC.Regex("$not", "reply","")))))
+
+  }
+  if(sPoint.Parent != nil){
+    //only return tweets where parent = given parentId
+    poid,err := objectid.FromHex(*(sPoint.Parent))
+    if err != nil {
+        log.Error("Invalid Parent ID")
+        return nil, err
+    }
+    doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.ObjectID("parent",poid))))
   }
   log.Info(doc)
-  set,err := col.Find(
+  set,err := col.Aggregate(
       context.Background(),
       doc)
   //error checking, if valid then it retrieves the limit's amount of document
@@ -179,13 +205,22 @@ func generateList(sPoint params, r *http.Request) ([]Item, error){
     for set.Next(context.Background()) && lim>0{
       //row := bson.NewDocument()
       err = set.Decode(&info)
-      info.IdString = info.ID.Hex()
-      tweetList = append(tweetList,info)
-      lim -= 1
+      if(sPoint.HasMedia == true){
+        //only query tweets with Media
+        if(info.MediaIDs != nil){
+          tweetList = append(tweetList,info)
+          lim -= 1
+        }else{
+          continue;
+        }
+      }else{
+        tweetList = append(tweetList,info)
+        lim -= 1
+      }
     }
   }
   if tweetList == nil {
-      tweetList = []Item{}
+      tweetList = []item.Item{}
   }
   return tweetList, nil
 }
