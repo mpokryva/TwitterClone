@@ -3,8 +3,8 @@ package main
 import (
     "context"
     "net/http"
-    "github.com/onrik/logrus/filename"
-    log "github.com/sirupsen/logrus"
+    logrus "github.com/sirupsen/logrus"
+    "os"
     "encoding/json"
     "TwitterClone/wrappers"
     "github.com/gorilla/mux"
@@ -23,14 +23,23 @@ type userResponse struct {
     Followers int `json:"followers"`
     Following int `json:"following"`
 }
-
-
+var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/user/{username}", userHandler).Methods("GET")
     http.Handle("/", r)
-    log.AddHook(filename.NewHook())
-    log.SetLevel(log.DebugLevel)
+    // Log to a file
+    var f *os.File
+    var err error
+    log, f, err = wrappers.FileLogger("user.log", os.O_CREATE | os.O_RDWR,
+        0666)
+    if err != nil {
+        log.Fatal("Logging file could not be opened.")
+    }
+    f.Truncate(0)
+    f.Seek(0, 0)
+    defer f.Close()
+    log.SetLevel(logrus.ErrorLevel)
     log.Fatal(http.ListenAndServe(":8007", nil))
 }
 
