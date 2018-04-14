@@ -36,7 +36,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
+    log.SetLevel(logrus.DebugLevel)
     log.Fatal(http.ListenAndServe(":8004", nil))
 }
 
@@ -53,7 +53,6 @@ func verifyUser(w http.ResponseWriter, req *http.Request) {
     if valid {
       if(user_exists(verif)){
           r.Status = "OK"
-          // log.Println("Line 46")
       }else {
         log.Error("Input not valid!")
         r.Status = "error"
@@ -73,10 +72,10 @@ func validateParams(verif verification) bool {
     } else if (verif.Key == nil) {
         valid = false
     }
-    // if (valid) {
-    //     log.Println("Key: ", *verif.Key)
-    //     log.Println("Email: ", *verif.Email)
-    // }
+    if (valid) {
+        log.Debug("Key: ", *verif.Key)
+        log.Debug("Email: ", *verif.Email)
+    }
     return valid
 }
 
@@ -97,7 +96,5 @@ func user_exists(verif verification) bool {
     result, err := col.UpdateOne(
         context.Background(),
         filter, update)
-    //log.Println("Here:" + result.ModifiedCount == int64(1))
-    // log.Println("Here")
     return result.ModifiedCount == int64(1)
 }
