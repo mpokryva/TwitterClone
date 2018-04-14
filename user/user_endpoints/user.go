@@ -59,6 +59,7 @@ func userHandler(w http.ResponseWriter, r *http.Request) {
         res.Error = err.Error()
     } else {
         log.Debug(user)
+        res.Status = "OK"
         var userRes userResponse
         userRes.Email = user.Email
         userRes.Following = user.FollowingCount
