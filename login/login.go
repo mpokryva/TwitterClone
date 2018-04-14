@@ -2,8 +2,8 @@ package main
 
 import (
     "context"
-    "github.com/onrik/logrus/filename"
-    log "github.com/sirupsen/logrus"
+    "os"
+    logrus "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -23,13 +23,23 @@ type userDetails struct {
     Username *string `json:"username"`
     Password *string `json:"password"`
 }
-
+var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/login", loginHandler).Methods("POST")
     http.Handle("/", r)
-    log.AddHook(filename.NewHook())
-    log.SetLevel(log.DebugLevel)
+    // Log to a file
+    var f *os.File
+    var err error
+    log, f, err = wrappers.FileLogger("login.log", os.O_CREATE | os.O_RDWR,
+        0666)
+    if err != nil {
+        log.Fatal("Logging file could not be opened.")
+    }
+    f.Truncate(0)
+    f.Seek(0, 0)
+    defer f.Close()
+    log.SetLevel(logrus.ErrorLevel)
     log.Fatal(http.ListenAndServe(":8003", nil))
 }
 
