@@ -2,7 +2,8 @@ package main
 
 import (
     "context"
-    "log"
+    "os"
+    "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -27,13 +28,23 @@ type res struct {
     Status string `json:"status"`
     Error string `json:"error,omitempty"`
 }
-
-
+var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
     r.HandleFunc("/adduser", addUser).Methods("POST")
     http.Handle("/", r)
+    // Log to a file
+    var f *os.File
+    var err error
+    log, f, err = wrappers.FileLogger("adduser.log", os.O_CREATE | os.O_RDWR,
+        0666)
+    if err != nil {
+        log.Fatal("Logging file could not be opened.")
+    }
+    f.Truncate(0)
+    f.Seek(0, 0)
+    defer f.Close()
+    log.SetLevel(logrus.ErrorLevel)
     http.ListenAndServe(":8002", nil)
 }
 
