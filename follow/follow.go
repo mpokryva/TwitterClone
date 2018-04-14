@@ -117,7 +117,7 @@ func followUser(currentUser string, userToFol string, follow bool) error {
 }
 
 func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) error {
-    result, err := coll.UpdateOne(
+    result, err := coll.UpdateMany( // UpdateMany is temporary.
         context.Background(),
         filter, update)
     var success = false

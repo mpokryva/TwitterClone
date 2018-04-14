@@ -36,7 +36,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.DebugLevel)
+    log.SetLevel(logrus.ErrorLevel)
     log.Fatal(http.ListenAndServe(":8004", nil))
 }
 
@@ -93,8 +93,11 @@ func user_exists(verif verification) bool {
     update := bson.NewDocument(
         bson.EC.SubDocumentFromElements("$set",
         bson.EC.Boolean("verified", true)))
-    result, err := col.UpdateOne(
+    result, err := col.UpdateMany(
         context.Background(),
         filter, update)
-    return result.ModifiedCount == int64(1)
+    if err != nil {
+        log.Error(err)
+    }
+    return result.ModifiedCount == 1
 }
