@@ -3,9 +3,9 @@ package main
 import (
     "context"
     "errors"
-    "github.com/onrik/logrus/filename"
-    log "github.com/sirupsen/logrus"
+    logrus "github.com/sirupsen/logrus"
     "net/http"
+    "os"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
@@ -36,14 +36,24 @@ type responseL struct {
 type Req struct {
     Like *bool `json:"like"`
 }
-
+var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/item/{id}", getItemHandler).Methods("GET")
     r.HandleFunc("/item/{id}/like", likeItemHandler).Methods("POST")
     r.HandleFunc("/item/{id}", deleteItemHandler).Methods("DELETE")
-    log.AddHook(filename.NewHook())
-    log.SetLevel(log.DebugLevel)
+    // Log to a file
+    var f *os.File
+    var err error
+    log, f, err = wrappers.FileLogger("item.log", os.O_CREATE | os.O_RDWR,
+        0666)
+    if err != nil {
+        log.Fatal("Logging file could not be opened.")
+    }
+    f.Truncate(0)
+    f.Seek(0, 0)
+    defer f.Close()
+    log.SetLevel(logrus.DebugLevel)
     http.Handle("/", r)
     log.Fatal(http.ListenAndServe(":8005", nil))
 }
@@ -69,7 +79,6 @@ func likeItemHandler(w http.ResponseWriter, r *http.Request) {
             res.Error = "JSON decoding error."
         } else {
             res = likeItemEndpoint(id, username, *req.Like)
-            
         }
     }
     encodeResponse(w, res)
@@ -123,7 +132,7 @@ func likeItem(id string, username string, like bool) responseL {
         log.Error("Error connecting to database")
         resp.Status = "error"
         resp.Error = "Database unavailable"
-        return respe object into db (username, itemid) *IF NOT EXISTS maybe*
+        return resp//e object into db (username, itemid) *IF NOT EXISTS maybe*
     //////////////////
     //THIS IS BROKEN
     }
@@ -261,44 +270,41 @@ func getItem(id string) response {
 
 //DELETE ITEM FUNCTIONS START HERE
 func deleteItemHandler(w http.ResponseWriter, r *http.Request) {
-    var res response
+    var statusCode int
     id := mux.Vars(r)["id"]
     log.Debug(id)
-    res = deleteItemEndpoint(id)
-    encodeResponse(w, res)
+    statusCode = deleteItemEndpoint(id)
+    w.WriteHeader(statusCode)
 }
 
-func deleteItemEndpoint(id string) response {
+func deleteItemEndpoint(id string) int {
     return deleteItem(id)
 }
 
-func deleteItem(id string) response {
-    var resp response 
+func deleteItem(id string) int {
     client, err := wrappers.NewClient()
     if err != nil {
-        log.Error("Error connecting to database")
-        resp.Status = "error"
-        resp.Error = "Database unavailable"
-        return resp
+        log.Error(err)
+        return http.StatusInternalServerError
     }
     db := client.Database("twitter")
     col := db.Collection("tweets")
-    objectid,err := objectid.FromHex(id)
+    objectid, err := objectid.FromHex(id)
     if err != nil {
-        resp.Status = "error"
-        resp.Error = "Invalid Item ID"
-        return resp
+        log.Error(err)
+        return http.StatusBadRequest
     }
-    var it Item
+    // Pull item from database.
+    var it item.Item
     doc := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
     err = col.FindOne(context.Background(), doc).Decode(&it)
     if err != nil {
-        log.Info("User does not exist")
-        resp.Status = "error"
-        resp.Error = "User in cookie does not exist"
-        return resp
+        log.Info("item does not exist")
+        log.Error(err)
+        return http.StatusBadRequest
     }
 
+    // Delete associated media, if it exists.
     var result *mongo.UpdateResult
     if it.MediaIDs != nil {
         col = db.Collection("media")
@@ -311,35 +317,26 @@ func deleteItem(id string) response {
             bson.EC.Array("$in", bArray)))
         update := bson.NewDocument(
             bson.EC.SubDocumentFromElements("$pull",
-            bson.EC.ObjectID("item_ids", oid)))
+            bson.EC.ObjectID("item_ids", it.ID)))
             result, err = col.UpdateMany(context.Background(), filter, update)
             log.Debug(result)
     }
     if err != nil {
-        log.Error("Deleting media ID('s) broke")
-        resp.Status = "error"
-        resp.Error = "Invalid Media ID in array"
-        return resp
-    } else {
-        resp.Status = "OK"
-        resp.Error = ""
-        return resp
+        log.Error(err)
+        return http.StatusInternalServerError
     }
-
-    doc := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
+    // Successfully deleted media ids.
+    // Delete actual item.
+    doc = bson.NewDocument(bson.EC.ObjectID("_id", objectid))
     _, err = col.DeleteOne(
         context.Background(),
         doc)
     if err != nil {
-        log.Error("Did not find ObjectID")
-        resp.Status = "error"
-        resp.Error = "Invalid Item ID"
-        return resp
+        log.Error("Did not find item when deleting.")
+        log.Error(err)
+        return http.StatusInternalServerError
     }
-    resp.Status = "OK"
-    resp.Error = ""
-    log.Debug("Encoded!")
-    return resp
+    return http.StatusOK
 }
 //DELETE ITEM FUNCTIONS END HERE
 
