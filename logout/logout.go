@@ -3,9 +3,10 @@ package main
 import (
     "net/http"
     "encoding/json"
+    "os"
     "github.com/gorilla/mux"
-    "github.com/onrik/logrus/filename"
-    log "github.com/sirupsen/logrus"
+    logrus "github.com/sirupsen/logrus"
+    "TwitterClone/wrappers"
 )
 
 
@@ -13,13 +14,23 @@ type response struct {
     Status string `json:"status"`
     Error string `json:"error,omitempty"`
 }
-
+var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/logout", logoutHandler).Methods("POST")
     http.Handle("/", r)
-    log.AddHook(filename.NewHook())
-    log.SetLevel(log.ErrorLevel)
+    // Log to a file
+    var f *os.File
+    var err error
+    log, f, err = wrappers.FileLogger("logout.log", os.O_CREATE | os.O_RDWR,
+        0666)
+    if err != nil {
+        log.Fatal("Logging file could not be opened.")
+    }
+    f.Truncate(0)
+    f.Seek(0, 0)
+    defer f.Close()
+    log.SetLevel(logrus.ErrorLevel)
     log.Fatal(http.ListenAndServe(":8001", nil))
 }
 
