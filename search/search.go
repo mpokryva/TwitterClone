@@ -68,6 +68,7 @@ func getUsername(r *http.Request) (string, error) {
 }
 
 func search(w http.ResponseWriter, req *http.Request) {
+    startTime := time.Now()
     decoder := json.NewDecoder(req.Body)
     var start params
     var r res
@@ -120,6 +121,8 @@ func search(w http.ResponseWriter, req *http.Request) {
         r.Status = "error"
         r.Error = err.Error()
     }
+    elapsed := time.Since(startTime)
+    log.Info("elapsed: " + elapsed.String())
   json.NewEncoder(w).Encode(r)
 }
 
