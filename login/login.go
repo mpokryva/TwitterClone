@@ -3,7 +3,8 @@ package main
 import (
     "context"
     "os"
-    logrus "github.com/sirupsen/logrus"
+    "time"
+    "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
     "github.com/gorilla/mux"
@@ -39,7 +40,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
+    log.SetLevel(logrus.InfoLevel)
     log.Fatal(http.ListenAndServe(":8003", nil))
 }
 
@@ -76,6 +77,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
+    timeStart := time.Now()
     var res response
     details, err := decodeRequest(r)
     if (err != nil) {
@@ -93,6 +95,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         cookie.Value = *details.Username
         http.SetCookie(w, &cookie)
     }
+    elapsed := time.Since(timeStart)
+    log.Info("elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 
