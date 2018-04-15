@@ -1,4 +1,4 @@
-package main
+package adduser
 
 import (
     "context"
@@ -32,7 +32,7 @@ type response struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/adduser", addUser).Methods("POST")
+    r.HandleFunc("/adduser", AddUserHandler).Methods("POST")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -104,7 +104,7 @@ func sendError(w http.ResponseWriter, err error) {
     encodeResponse(w, res)
 }
 
-func addUser(w http.ResponseWriter, req *http.Request) {
+func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     decoder := json.NewDecoder(req.Body)
     var us request
     err := decoder.Decode(&us)

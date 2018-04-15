@@ -1,4 +1,4 @@
-package main
+package item_endpoints
 
 import (
     "context"
@@ -39,9 +39,9 @@ type Req struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/item/{id}", getItemHandler).Methods("GET")
-    r.HandleFunc("/item/{id}/like", likeItemHandler).Methods("POST")
-    r.HandleFunc("/item/{id}", deleteItemHandler).Methods("DELETE")
+    r.HandleFunc("/item/{id}", GetItemHandler).Methods("GET")
+    r.HandleFunc("/item/{id}/like", LikeItemHandler).Methods("POST")
+    r.HandleFunc("/item/{id}", DeleteItemHandler).Methods("DELETE")
     // Log to a file
     var f *os.File
     var err error
@@ -60,7 +60,7 @@ func main() {
 
 //LIKE ITEM FUNCTIONS START HERE
 
-func likeItemHandler(w http.ResponseWriter, r *http.Request) {
+func LikeItemHandler(w http.ResponseWriter, r *http.Request) {
     id := mux.Vars(r)["id"]
     log.Debug(id)
 
@@ -162,7 +162,7 @@ func likeItem(id string, username string, like bool) responseL {
             resp.Status = "error"
             resp.Error = "You have not liked this tweet before"
             return resp
-        }        
+        }
     }
     col = db.Collection("tweets")
 
@@ -219,7 +219,7 @@ func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) e
 //LIKE ITEM ENDPOINT ENDS HERE
 
 //GET ITEM FUNCTIONS START HERE
-func getItemHandler(w http.ResponseWriter, r *http.Request) {
+func GetItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     id := mux.Vars(r)["id"]
     log.Debug(id)
@@ -269,7 +269,7 @@ func getItem(id string) response {
 //GET ITEM FUNCTIONS END HERE
 
 //DELETE ITEM FUNCTIONS START HERE
-func deleteItemHandler(w http.ResponseWriter, r *http.Request) {
+func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
     var statusCode int
     id := mux.Vars(r)["id"]
     log.Debug(id)

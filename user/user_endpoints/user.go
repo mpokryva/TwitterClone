@@ -1,4 +1,4 @@
-package main
+package user_endpoints
 
 import (
     "context"
@@ -26,7 +26,7 @@ type userResponse struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/user/{username}", userHandler).Methods("GET")
+    r.HandleFunc("/user/{username}", GetUserHandler).Methods("GET")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -47,7 +47,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func userHandler(w http.ResponseWriter, r *http.Request) {
+func GetUserHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     username := vars["username"]
     log.Debug(username)

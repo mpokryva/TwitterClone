@@ -1,4 +1,4 @@
-package main
+package login
 
 import (
     "context"
@@ -27,7 +27,7 @@ type userDetails struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/login", loginHandler).Methods("POST")
+    r.HandleFunc("/login", LoginHandler).Methods("POST")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -76,7 +76,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
     timeStart := time.Now()
     var res response
     details, err := decodeRequest(r)

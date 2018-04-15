@@ -4,6 +4,17 @@ import (
     "net/http"
     "github.com/gorilla/mux"
     "TwitterClone/additem"
+    "TwitterClone/user/user_endpoints"
+    "TwitterClone/user/user_endpoints/followInfo"
+    "TwitterClone/user/user_endpoints/adduser"
+    "TwitterClone/search"
+    "TwitterClone/media/addmedia"
+    "TwitterClone/media/media_endpoints"
+    "TwitterClone/follow"
+    "TwitterClone/item/item_endpoints"
+    "TwitterClone/verify"
+    "TwitterClone/login"
+    "TwitterClone/logout"
 )
 
 type Route struct {
@@ -43,17 +54,17 @@ var routes = []Route{
         "GetItem",
         "GET",
         "/item/{id}",
-        item.GetItemHandler},
+        item_endpoints.GetItemHandler},
     Route {
         "LikeItem",
         "POST",
         "/item/{id}/like",
-        item.LikeItemHandler},
+        item_endpoints.LikeItemHandler},
     Route {
         "DeleteItem",
         "DELETE",
         "/item/{id}",
-        item.DeleteItemHandler},
+        item_endpoints.DeleteItemHandler},
     Route {
         "search",
         "POST",
@@ -63,17 +74,17 @@ var routes = []Route{
         "GetUser",
         "GET",
         "/user/{username}",
-        user.GetUserHandler},
+        user_endpoints.GetUserHandler},
     Route {
         "GetUserFollowers",
         "GET",
         "/user/{username}/followers",
-        user.GetFollowersHandler},
+        followInfo.GetFollowersHandler},
     Route {
         "GetUserFollowing",
         "GET",
         "/user/{username}/following",
-        user.GetFollowingHandler},
+        followInfo.GetFollowingHandler},
     Route {
         "Follow",
         "POST",
@@ -83,12 +94,12 @@ var routes = []Route{
         "AddMedia",
         "POST",
         "/addmedia",
-        media.AddMediaHandler},
+        addmedia.AddMediaHandler},
     Route {
         "GetMedia",
         "GET",
         "/media/{id}",
-        media.GetMediaHandler},
+        media_endpoints.GetMediaHandler},
 
 }
 func NewRouter() *mux.Router {

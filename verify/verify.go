@@ -1,4 +1,4 @@
-package main
+package verify
 
 import (
     "context"
@@ -23,7 +23,7 @@ type res struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/verify", verifyUser).Methods("POST")
+    r.HandleFunc("/verify", VerifyHandler).Methods("POST")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -41,7 +41,7 @@ func main() {
 }
 
 
-func verifyUser(w http.ResponseWriter, req *http.Request) {
+func VerifyHandler(w http.ResponseWriter, req *http.Request) {
     decoder := json.NewDecoder(req.Body)
     var verif verification
     var r res

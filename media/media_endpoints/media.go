@@ -1,4 +1,4 @@
-package main
+package media_endpoints
 
 import (
     "context"
@@ -17,7 +17,7 @@ import (
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/media/{id}", mediaHandler).Methods("GET")
+    r.HandleFunc("/media/{id}", GetMediaHandler).Methods("GET")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -34,7 +34,7 @@ func main() {
     log.Fatal(http.ListenAndServe(":8010", nil))
 }
 
-func mediaHandler(w http.ResponseWriter, r *http.Request) {
+func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     id := vars["id"]
     log.Debug(id)

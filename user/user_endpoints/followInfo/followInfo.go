@@ -1,4 +1,4 @@
-package main
+package followInfo
 
 import (
     "context"
@@ -25,8 +25,8 @@ type response struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/user/{username}/following", followingHandler).Methods("GET")
-    r.HandleFunc("/user/{username}/followers", followersHandler).Methods("GET")
+    r.HandleFunc("/user/{username}/following", GetFollowingHandler).Methods("GET")
+    r.HandleFunc("/user/{username}/followers", GetFollowersHandler).Methods("GET")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -65,7 +65,7 @@ func checkLimit() (params,error){
   return p,nil
 }
 
-func followingHandler(w http.ResponseWriter, r *http.Request) {
+func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
     var resp response
     p, e := checkLimit()
     if e != nil{
@@ -88,7 +88,7 @@ func followingHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func followersHandler(w http.ResponseWriter, r *http.Request) {
+func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
     var resp response
     p, e := checkLimit()
     if e != nil{

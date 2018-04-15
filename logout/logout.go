@@ -1,4 +1,4 @@
-package main
+package logout
 
 import (
     "net/http"
@@ -17,7 +17,7 @@ type response struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/logout", logoutHandler).Methods("POST")
+    r.HandleFunc("/logout", LogoutHandler).Methods("POST")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -43,7 +43,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
     cookie, res := logoutEndpoint(r)
     if (cookie != nil) {
         http.SetCookie(w, cookie)

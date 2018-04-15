@@ -1,4 +1,4 @@
-package main
+package follow
 
 import (
     "context"
@@ -26,7 +26,7 @@ type response struct {
 var log *logrus.Logger
 func main() {
     r := mux.NewRouter()
-    r.HandleFunc("/follow", followHandler).Methods("POST")
+    r.HandleFunc("/follow", FollowHandler).Methods("POST")
     http.Handle("/", r)
     // Log to a file
     var f *os.File
@@ -146,7 +146,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func followHandler(w http.ResponseWriter, r *http.Request) {
+func FollowHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     username, err := checkLogin(r)
     if err != nil {
