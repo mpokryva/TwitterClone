@@ -53,7 +53,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.DebugLevel)
+    log.SetLevel(logrus.ErrorLevel)
     http.Handle("/", r)
     log.Fatal(http.ListenAndServe(":8005", nil))
 }
