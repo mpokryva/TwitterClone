@@ -3,6 +3,7 @@ package main
 import (
     "context"
     "os"
+    "errors"
     "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
@@ -24,7 +25,7 @@ type request struct {
     Email *string `json:"email"`
 }
 
-type res struct {
+type response struct {
     Status string `json:"status"`
     Error string `json:"error,omitempty"`
 }
@@ -44,7 +45,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
+    log.SetLevel(logrus.DebugLevel)
     http.ListenAndServe(":8002", nil)
 }
 
@@ -52,85 +53,101 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func insertUser(user user.User, key string) bool {
+func insertUser(user user.User, key string) error {
     client, err := wrappers.NewClient()
     if err != nil {
-        log.Println("Panicking")
-        panic(err)
+        log.Error(err)
+        return err
     }
     db := client.Database("twitter")
     col := db.Collection("users")
-    existingDoc :=bson.NewDocument(bson.EC.String("email", user.Email))
-    err1, errorName := col.Count(context.Background(), existingDoc);
-    log.Println(existingDoc)
-    if err1 > 0{
-        log.Println(errorName)
-        return false
+    filter := bson.NewDocument(bson.EC.String("email", user.Email))
+    count, err := col.Count(context.Background(), filter);
+    if count > 0 {
+        err = errors.New("The email " + user.Email + " is already in use.")
+        log.Error(err)
+        return err
+    } else if err != nil {
+        log.Error(err)
+        return err
     }
-    doc := bson.NewDocument(bson.EC.String("username", user.Username))
-    err4, errorEmail := col.Count(context.Background(),doc);
-    if err4 > 0{
-        log.Println("username error: %s",errorEmail)
-        return false
+    filter = bson.NewDocument(bson.EC.String("username", user.Username))
+    count, err = col.Count(context.Background(), filter);
+    if count > 0 {
+        err = errors.New("The username " + user.Username + " is already in use.")
+        log.Error(err)
+        return err
+    } else if err != nil {
+        log.Error(err)
+        return err
     }
     bytePassword := []byte(user.Password)
     hashedPassword, err := bcrypt.GenerateFromPassword(bytePassword, bcrypt.DefaultCost)
     if err != nil {
-        return false
+        log.Error(err)
+        return err
     }
     user.Password = (string)(hashedPassword)
     user.Key = "<"+key+">"
     user.Verified = false
-    log.Println(user)
     _, err = col.InsertOne(context.Background(), &user)
-    return err == nil
+    if err != nil {
+        log.Error(err)
+    }
+    return err
+}
+
+func sendError(w http.ResponseWriter, err error) {
+    var res response
+    res.Status = "error"
+    res.Error = err.Error()
+    encodeResponse(w, res)
 }
 
 func addUser(w http.ResponseWriter, req *http.Request) {
     decoder := json.NewDecoder(req.Body)
     var us request
-    var r res
     err := decoder.Decode(&us)
     if err != nil {
-        panic(err)
+        sendError(w, err)
+        return
     }
-    log.Println(us)
-    valid := validateUser(us)
-    if valid {
-        var user user.User
-        user.Email = *us.Email
-        user.Username = *us.Username
-        user.Password = *us.Password
-        log.Println(user)
-        //create the hashed verification key
-        num := rand.Int()
-        numstring := strconv.Itoa(num)
-        log.Println(num, numstring)
-        hasher := md5.New()
-        hasher.Write([]byte(user.Username))
-        hasher.Write([]byte(numstring))
-        key := hex.EncodeToString(hasher.Sum(nil))
-        // Add the user.
-        insert := insertUser(user, key)
-        em := email(user, key)
-        log.Println(insert, em)
-        if(insert == true && em == true){
-            r.Status = "OK"
-            //resM,_ := json.Marshal(r)
-            //r.Status = "OK"
-        }else {
-            log.Println("Not valid!")
-            r.Status = "error"
-            r.Error = "Username/email is already in use"
-        }
-    }else{
-        r.Status = "error"
-        r.Error = "Not enough input"
+    err = validateUser(us)
+    if err != nil {
+        sendError(w, err)
+        return
     }
-    encodeResponse(w, r)
+    var user user.User
+    user.Email = *us.Email
+    user.Username = *us.Username
+    user.Password = *us.Password
+    log.Debug(user)
+    // Create the hashed verification key.
+    num := rand.Int()
+    numstring := strconv.Itoa(num)
+    log.Println(num, numstring)
+    hasher := md5.New()
+    hasher.Write([]byte(user.Username))
+    hasher.Write([]byte(numstring))
+    key := hex.EncodeToString(hasher.Sum(nil))
+    // Add the user.
+    err = insertUser(user, key)
+    if err != nil {
+        sendError(w, err)
+        return
+    }
+    // Email user once inserted into db.
+    err = email(user, key)
+    if err != nil {
+        sendError(w, err)
+        return
+    }
+    var res response
+    res.Status = "OK"
+    encodeResponse(w, res)
 }
 
-func email(us user.User, key string) bool{
+func email(us user.User, key string) error {
     link := "http://nsamba.cse356.compas.cs.stonybrook.edu/verify?email="+us.Email+"&key="+key
     msg := []byte("To: "+us.Email+"\r\n" +
     "Subject: Validation Email\r\n" +
@@ -139,21 +156,22 @@ func email(us user.User, key string) bool{
 
     err := smtp.SendMail("smtp.gmail.com:587", smtp.PlainAuth("","twiti.verify@gmail.com","cloud356", "smtp.gmail.com"),"twiti.verify@gmail.com",[]string{us.Email}, []byte(msg) )
     if err != nil {
-        log.Printf("smtp error: %s", err)
-        return false
+        log.Error(err)
     }
-    return true
+    return err
 }
 
-func validateUser(us request) bool {
-    valid := true
+func validateUser(us request) error {
+    var err error
     if (us.Username == nil) {
-        valid = false
+        err = errors.New("No username in adduser request.")
     } else if (us.Password == nil) {
-        valid = false
+        err = errors.New("No password in adduser request.")
     }else if (us.Email == nil) {
-        valid = false
+        err = errors.New("No email in adduser request.")
     }
-    log.Println(valid)
-    return valid
+    if err != nil {
+        log.Error(err)
+    }
+    return err
 }
