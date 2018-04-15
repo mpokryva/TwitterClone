@@ -1,6 +1,7 @@
 package wrappers
 
 import (
+    "time"
     "os"
     "github.com/mongodb/mongo-go-driver/mongo"
     //"github.com/mongodb/mongo-go-driver/bson"
@@ -20,7 +21,11 @@ func NewClient() (*mongo.Client, error) {
         return client, nil
     }
     var err error
-    client, err = mongo.NewClient("mongodb://mongo-query-router:27017")
+    var ClientOpt = &mongo.ClientOptions{}
+    opts := ClientOpt.
+        MaxConnIdleTime(time.Second * 30)
+    client, err = mongo.NewClientWithOptions(
+        "mongodb://mongo-query-router:27017", opts)
     if err != nil {
         log.Error(err)
     }
