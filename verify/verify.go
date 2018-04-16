@@ -6,7 +6,6 @@ import (
     logrus "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
-    "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
     "TwitterClone/wrappers"
 )

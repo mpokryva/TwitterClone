@@ -7,7 +7,6 @@ import (
     "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
-    "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
     "golang.org/x/crypto/bcrypt"
     "TwitterClone/user"

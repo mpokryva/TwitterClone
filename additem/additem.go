@@ -8,7 +8,6 @@ import (
     "errors"
     "github.com/sirupsen/logrus"
     "encoding/json"
-    "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/mongo"

@@ -41,7 +41,7 @@ type res struct {
   Error string `json:"error,omitempty"`
 }
 
-var Log logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/search", SearchHandler).Methods("POST")
@@ -56,8 +56,8 @@ func main() {
 	if err != nil {
 		Log.Panic(err)
 	}
-	Log.Hooks.Add(hook)
-    Log.WithFields(logrus.Fields{
+	log.Hooks.Add(hook)
+    log.WithFields(logrus.Fields{
 		"name": "joe",
         "age":  42,
     }).Info("Hello world!")
@@ -72,7 +72,7 @@ func main() {
     // f.Truncate(0)
     // f.Seek(0, 0)
     // defer f.Close()
-    Log.SetLevel(logrus.InfoLevel)
+    log.SetLevel(logrus.InfoLevel)
     http.ListenAndServe(":8006", nil)
 }
 

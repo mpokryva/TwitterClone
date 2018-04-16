@@ -3,10 +3,7 @@ package logout
 import (
     "net/http"
     "encoding/json"
-    
-    "github.com/gorilla/mux"
     logrus "github.com/sirupsen/logrus"
-    "TwitterClone/wrappers"
 )
 
 

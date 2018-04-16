@@ -2,12 +2,10 @@ package adduser
 
 import (
     "context"
-    
     "errors"
     "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
-    "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
     "crypto/md5"
     "encoding/hex"
