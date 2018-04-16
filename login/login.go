@@ -24,7 +24,7 @@ type userDetails struct {
     Username *string `json:"username"`
     Password *string `json:"password"`
 }
-var log *logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/login", LoginHandler).Methods("POST")

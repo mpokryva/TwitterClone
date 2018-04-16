@@ -22,7 +22,7 @@ type response struct {
     Users []string `json:"users"`
     Error string `json:"error,omitempty"`
 }
-var log *logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/user/{username}/following", GetFollowingHandler).Methods("GET")

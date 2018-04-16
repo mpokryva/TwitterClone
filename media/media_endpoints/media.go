@@ -14,7 +14,7 @@ import (
     "TwitterClone/media"
 )
 
-var log *logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/media/{id}", GetMediaHandler).Methods("GET")

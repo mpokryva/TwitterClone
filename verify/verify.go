@@ -20,7 +20,7 @@ type res struct {
   Status string `json:"status"`
   Error string `json:"error,omitempty"`
 }
-var log *logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/verify", VerifyHandler).Methods("POST")

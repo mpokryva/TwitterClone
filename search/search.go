@@ -41,7 +41,7 @@ type res struct {
   Error string `json:"error,omitempty"`
 }
 
-var log logrus.Logger
+var Log logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/search", SearchHandler).Methods("POST")

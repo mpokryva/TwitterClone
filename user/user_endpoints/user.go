@@ -23,7 +23,7 @@ type userResponse struct {
     Followers int `json:"followers"`
     Following int `json:"following"`
 }
-var log *logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/user/{username}", GetUserHandler).Methods("GET")

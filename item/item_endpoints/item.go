@@ -36,7 +36,7 @@ type responseL struct {
 type Req struct {
     Like *bool `json:"like"`
 }
-var log *logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/item/{id}", GetItemHandler).Methods("GET")
