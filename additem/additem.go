@@ -30,6 +30,7 @@ type response struct {
 }
 
 var log *logrus.Logger
+var Log *logrus.Logger
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/additem", AddItemHandler).Methods("POST")
@@ -133,18 +134,6 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func AddItemHandler(w http.ResponseWriter, r *http.Request) {
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("additem.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
     var res response
     username, err := checkLogin(r)
     if err != nil {
