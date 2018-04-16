@@ -2,7 +2,7 @@ package adduser
 
 import (
     "context"
-    "os"
+    
     "errors"
     "github.com/sirupsen/logrus"
     "net/http"
@@ -31,22 +31,7 @@ type response struct {
 }
 var Log *logrus.Logger
 func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/adduser", AddUserHandler).Methods("POST")
-    http.Handle("/", r)
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("adduser.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
     Log.SetLevel(logrus.ErrorLevel)
-    http.ListenAndServe(":8002", nil)
 }
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {

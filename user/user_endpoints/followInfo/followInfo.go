@@ -7,7 +7,7 @@ import (
     logrus "github.com/sirupsen/logrus"
     "encoding/json"
     "TwitterClone/wrappers"
-    "os"
+    
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
     "TwitterClone/user"
@@ -24,23 +24,7 @@ type response struct {
 }
 var Log *logrus.Logger
 func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/user/{username}/following", GetFollowingHandler).Methods("GET")
-    r.HandleFunc("/user/{username}/followers", GetFollowersHandler).Methods("GET")
-    http.Handle("/", r)
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("followInfo.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
     Log.SetLevel(logrus.ErrorLevel)
-    Log.Fatal(http.ListenAndServe(":8008", nil))
 }
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {

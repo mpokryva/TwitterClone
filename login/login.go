@@ -2,7 +2,7 @@ package login
 
 import (
     "context"
-    "os"
+    
     "time"
     "github.com/sirupsen/logrus"
     "net/http"
@@ -26,22 +26,7 @@ type userDetails struct {
 }
 var Log *logrus.Logger
 func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/login", LoginHandler).Methods("POST")
-    http.Handle("/", r)
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("login.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
     Log.SetLevel(logrus.InfoLevel)
-    Log.Fatal(http.ListenAndServe(":8003", nil))
 }
 
 func authUser(details userDetails) bool {

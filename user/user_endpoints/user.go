@@ -4,7 +4,7 @@ import (
     "context"
     "net/http"
     logrus "github.com/sirupsen/logrus"
-    "os"
+    
     "encoding/json"
     "TwitterClone/wrappers"
     "github.com/gorilla/mux"
@@ -28,19 +28,7 @@ func main() {
     r := mux.NewRouter()
     r.HandleFunc("/user/{username}", GetUserHandler).Methods("GET")
     http.Handle("/", r)
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("user.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
     Log.SetLevel(logrus.ErrorLevel)
-    Log.Fatal(http.ListenAndServe(":8007", nil))
 }
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {

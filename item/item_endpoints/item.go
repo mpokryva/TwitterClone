@@ -5,7 +5,7 @@ import (
     "errors"
     logrus "github.com/sirupsen/logrus"
     "net/http"
-    "os"
+    
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
@@ -38,24 +38,7 @@ type Req struct {
 }
 var Log *logrus.Logger
 func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/item/{id}", GetItemHandler).Methods("GET")
-    r.HandleFunc("/item/{id}/like", LikeItemHandler).Methods("POST")
-    r.HandleFunc("/item/{id}", DeleteItemHandler).Methods("DELETE")
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("item.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
     Log.SetLevel(logrus.ErrorLevel)
-    http.Handle("/", r)
-    Log.Fatal(http.ListenAndServe(":8005", nil))
 }
 
 //LIKE ITEM FUNCTIONS START HERE

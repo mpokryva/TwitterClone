@@ -2,7 +2,7 @@ package main
 
 import (
     "net/http"
-    "os"
+    
     "github.com/sirupsen/logrus"
     "TwitterClone/wrappers"
     "TwitterClone/additem"

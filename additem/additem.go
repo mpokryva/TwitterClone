@@ -4,7 +4,7 @@ import (
     "context"
     "net/http"
     "time"
-    "os"
+    
     "errors"
     "github.com/sirupsen/logrus"
     "encoding/json"
@@ -30,26 +30,10 @@ type response struct {
 }
 
 var Log *logrus.Logger
-var Log *logrus.Logger
-func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/additem", AddItemHandler).Methods("POST")
-    http.Handle("/", r)
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("additem.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
-    Log.SetLevel(logrus.ErrorLevel)
-    Log.Fatal(http.ListenAndServe(":8000", nil))
-}
 
+func main() {
+    Log.SetLevel(logrus.ErrorLevel)
+}
 
 func checkLogin(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")

@@ -3,7 +3,7 @@ package media_endpoints
 import (
     "context"
     "net/http"
-    "os"
+    
     "errors"
     "strconv"
     "github.com/sirupsen/logrus"
@@ -16,22 +16,7 @@ import (
 
 var Log *logrus.Logger
 func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/media/{id}", GetMediaHandler).Methods("GET")
-    http.Handle("/", r)
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("media.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
     Log.SetLevel(logrus.ErrorLevel)
-    Log.Fatal(http.ListenAndServe(":8010", nil))
 }
 
 func GetMediaHandler(w http.ResponseWriter, r *http.Request) {

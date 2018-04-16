@@ -4,7 +4,7 @@ import (
     "context"
     "net/http"
     "time"
-    "os"
+    
     "io"
     "bytes"
     "github.com/sirupsen/logrus"
@@ -23,22 +23,7 @@ type response struct {
 
 var Log *logrus.Logger
 func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/addmedia", AddMediaHandler).Methods("POST")
-    http.Handle("/", r)
-    // Log to a file
-    var f *os.File
-    var err error
-    log, f, err = wrappers.FileLogger("addmedia.log", os.O_CREATE | os.O_RDWR,
-        0666)
-    if err != nil {
-        Log.Fatal("Logging file could not be opened.")
-    }
-    f.Truncate(0)
-    f.Seek(0, 0)
-    defer f.Close()
     Log.SetLevel(logrus.ErrorLevel)
-    Log.Fatal(http.ListenAndServe(":8011", nil))
 }
 
 
