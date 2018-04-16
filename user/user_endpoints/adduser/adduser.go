@@ -40,12 +40,12 @@ func main() {
     log, f, err = wrappers.FileLogger("adduser.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
+    Log.SetLevel(logrus.ErrorLevel)
     http.ListenAndServe(":8002", nil)
 }
 
@@ -56,7 +56,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 func insertUser(user user.User, key string) error {
     client, err := wrappers.NewClient()
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return err
     }
     db := client.Database("twitter")
@@ -65,26 +65,26 @@ func insertUser(user user.User, key string) error {
     count, err := col.Count(context.Background(), filter);
     if count > 0 {
         err = errors.New("The email " + user.Email + " is already in use.")
-        log.Error(err)
+        Log.Error(err)
         return err
     } else if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return err
     }
     filter = bson.NewDocument(bson.EC.String("username", user.Username))
     count, err = col.Count(context.Background(), filter);
     if count > 0 {
         err = errors.New("The username " + user.Username + " is already in use.")
-        log.Error(err)
+        Log.Error(err)
         return err
     } else if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return err
     }
     bytePassword := []byte(user.Password)
     hashedPassword, err := bcrypt.GenerateFromPassword(bytePassword, bcrypt.DefaultCost)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return err
     }
     user.Password = (string)(hashedPassword)
@@ -92,7 +92,7 @@ func insertUser(user user.User, key string) error {
     user.Verified = false
     _, err = col.InsertOne(context.Background(), &user)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
     }
     return err
 }
@@ -121,11 +121,11 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     user.Email = *us.Email
     user.Username = *us.Username
     user.Password = *us.Password
-    log.Debug(user)
+    Log.Debug(user)
     // Create the hashed verification key.
     num := rand.Int()
     numstring := strconv.Itoa(num)
-    log.Println(num, numstring)
+    Log.Println(num, numstring)
     hasher := md5.New()
     hasher.Write([]byte(user.Username))
     hasher.Write([]byte(numstring))
@@ -158,7 +158,7 @@ func email(us user.User, key string) error {
     "<mongo-config>",
        []string{us.Email}, msg)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
     }
     return err
 }
@@ -173,7 +173,7 @@ func validateUser(us request) error {
         err = errors.New("No email in adduser request.")
     }
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
     }
     return err
 }

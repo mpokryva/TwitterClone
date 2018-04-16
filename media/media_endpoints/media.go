@@ -25,27 +25,27 @@ func main() {
     log, f, err = wrappers.FileLogger("media.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
-    log.Fatal(http.ListenAndServe(":8010", nil))
+    Log.SetLevel(logrus.ErrorLevel)
+    Log.Fatal(http.ListenAndServe(":8010", nil))
 }
 
 func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     id := vars["id"]
-    log.Debug(id)
+    Log.Debug(id)
     var media media.Media
     oid, err := objectid.FromHex(id)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
     } else {
         media, err = getMedia(oid)
         if err != nil {
-            log.Error(err)
+            Log.Error(err)
         }
     }
     encodeResponse(w, media)
@@ -68,7 +68,7 @@ func getMedia(oid objectid.ObjectID) (media.Media, error) {
 func encodeResponse(w http.ResponseWriter, m media.Media) {
     if (m.Content == nil) {
         err := errors.New("Media not found.")
-        log.Debug(err)
+        Log.Debug(err)
         http.Error(w, err.Error(), http.StatusNotFound)
         return
     }

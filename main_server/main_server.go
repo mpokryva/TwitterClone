@@ -1,9 +1,9 @@
 package main
 
 import (
-    "log"
     "net/http"
-    "github.com/sirupsen/Logrus"
+    "os"
+    "github.com/sirupsen/logrus"
     "TwitterClone/wrappers"
     "TwitterClone/additem"
     "TwitterClone/user/user_endpoints"
@@ -15,11 +15,11 @@ import (
     "TwitterClone/follow"
     "TwitterClone/item/item_endpoints"
     "TwitterClone/verify"
-    "TwitterClone/Login"
-    "TwitterClone/Logout"
+    "TwitterClone/login"
+    "TwitterClone/logout"
 )
 
-var Log *Logrus.Logger
+var Log *logrus.Logger
 
 func main() {
     // Log to a file
@@ -33,7 +33,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    Log.SetLevel(Logrus.ErrorLevel)
+    Log.SetLevel(logrus.ErrorLevel)
     injectLogger()
     router := NewRouter()
     http.Handle("/", router)
@@ -44,13 +44,13 @@ func injectLogger() {
     additem.Log = Log
     user_endpoints.Log = Log
     followInfo.Log = Log
-    addUser.Log = Log
+    adduser.Log = Log
     search.Log = Log
     addmedia.Log = Log
     media_endpoints.Log = Log
     follow.Log = Log
     item_endpoints.Log = Log
     verify.Log = Log
-    Login.Log = Log
-    Logout.Log = Log
+    login.Log = Log
+    logout.Log = Log
 }

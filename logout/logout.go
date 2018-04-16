@@ -25,13 +25,13 @@ func main() {
     log, f, err = wrappers.FileLogger("logout.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
-    log.Fatal(http.ListenAndServe(":8001", nil))
+    Log.SetLevel(logrus.ErrorLevel)
+    Log.Fatal(http.ListenAndServe(":8001", nil))
 }
 
 func isLoggedIn(r *http.Request) bool {

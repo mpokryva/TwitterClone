@@ -50,14 +50,14 @@ func main() {
     log := logrus.New()
 	client, err := elastic.NewClient(elastic.SetURL("http://localhost:9200"))
 	if err != nil {
-        log.Panic(err)
+        Log.Panic(err)
 	}
 	hook, err := elogrus.NewAsyncElasticHook(client, "localhost", logrus.DebugLevel, "twiti")
 	if err != nil {
-		log.Panic(err)
+		Log.Panic(err)
 	}
-	log.Hooks.Add(hook)
-    log.WithFields(logrus.Fields{
+	Log.Hooks.Add(hook)
+    Log.WithFields(logrus.Fields{
 		"name": "joe",
         "age":  42,
     }).Info("Hello world!")
@@ -67,12 +67,12 @@ func main() {
     // log, f, err = wrappers.FileLogger("search.log", os.O_CREATE | os.O_RDWR,
     //     0666)
     // if err != nil {
-    //     log.Fatal("Logging file could not be opened.")
+    //     Log.Fatal("Logging file could not be opened.")
     // }
     // f.Truncate(0)
     // f.Seek(0, 0)
     // defer f.Close()
-    log.SetLevel(logrus.InfoLevel)
+    Log.SetLevel(logrus.InfoLevel)
     http.ListenAndServe(":8006", nil)
 }
 
@@ -94,7 +94,7 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
     if err != nil {
        r.Status = "error"
        r.Error = err.Error()
-       log.Error("Could not decode JSON")
+       Log.Error("Could not decode JSON")
        json.NewEncoder(w).Encode(r)
        return
     }
@@ -108,7 +108,7 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
     if(start.Limit > 100){
       r.Status = "error"
       r.Error = "Limit must be under 100"
-      log.Error("Limit exceeded 100")
+      Log.Error("Limit exceeded 100")
       json.NewEncoder(w).Encode(r)
     }
     if(start.Following == nil){
@@ -126,7 +126,7 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
       *def = true
       start.Replies = def
     }
-    log.WithFields(logrus.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
+    Log.WithFields(logrus.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
     "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
     //Generating the list of items
     itemList, err := generateList(start, req)
@@ -140,7 +140,7 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
         r.Error = err.Error()
     }
     elapsed := time.Since(startTime)
-    log.Info("elapsed: " + elapsed.String())
+    Log.Info("elapsed: " + elapsed.String())
   json.NewEncoder(w).Encode(r)
 }
 
@@ -150,10 +150,10 @@ func getFollowingList(username string, db mongo.Database) ([]string){
   var foundUser user.User
   err := c.FindOne(context.Background(), filter).Decode(&foundUser)
   if err != nil{
-    log.Error("Could not find user in DB")
+    Log.Error("Could not find user in DB")
     return nil
   }
-  log.Info(foundUser)
+  Log.Info(foundUser)
   return foundUser.Following
 
 }
@@ -162,10 +162,10 @@ func generateList(sPoint params, r *http.Request) ([]item.Item, error){
   //Connecting to db and setting up the collection
   client, err := wrappers.NewClient()
   if err != nil {
-    log.Error("Could not connect to Mongo.")
+    Log.Error("Could not connect to Mongo.")
     return nil, err
   }
-  log.Info(sPoint)
+  Log.Info(sPoint)
   db := client.Database("twitter")
   col := db.Collection("tweets")
 
@@ -174,7 +174,7 @@ func generateList(sPoint params, r *http.Request) ([]item.Item, error){
   //var prop property
   user,err := getUsername(r)
   if err != nil{
-    log.Error(err)
+    Log.Error(err)
     return nil,err
   }
   doc := bson.NewArray(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.SubDocumentFromElements("timestamp",bson.EC.Int64("$lte", (int64)(sPoint.Timestamp)),),),))
@@ -187,14 +187,14 @@ func generateList(sPoint params, r *http.Request) ([]item.Item, error){
     for _,element := range followingList{
       bArray.Append(bson.EC.String("fUsername",element).Value())
     }
-    log.Info(bArray)
+    Log.Info(bArray)
     doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.SubDocumentFromElements("username",bson.EC.Array("$in", bArray)))))
   }
   if(sPoint.Q != ""){
       doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.Regex("content", sPoint.Q, ""))))
   }
   if(*(sPoint.Rank) == "interest"){
-    log.Info("Interest is the ranking")
+    Log.Info("Interest is the ranking")
     doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$sort",bson.EC.Int32("property.likes", -1),bson.EC.Int32("retweeted", -1))))
   }
 
@@ -207,21 +207,21 @@ func generateList(sPoint params, r *http.Request) ([]item.Item, error){
     //only return tweets where parent = given parentId
     poid,err := objectid.FromHex(*(sPoint.Parent))
     if err != nil {
-        log.Error("Invalid Parent ID")
+        Log.Error("Invalid Parent ID")
         return nil, err
     }
     doc.Append(bson.VC.DocumentFromElements(bson.EC.SubDocumentFromElements("$match",bson.EC.ObjectID("parent",poid))))
   }
-  log.Info(doc)
+  Log.Info(doc)
   set,err := col.Aggregate(
       context.Background(),
       doc)
   //error checking, if valid then it retrieves the limit's amount of document
   if err != nil {
-    log.Error("Problem with query")
+    Log.Error("Problem with query")
       return nil, err
   } else {
-    log.Info(set)
+    Log.Info(set)
     lim := sPoint.Limit
     for set.Next(context.Background()) && lim>0{
       //row := bson.NewDocument()

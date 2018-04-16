@@ -34,13 +34,13 @@ func main() {
     log, f, err = wrappers.FileLogger("user.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
-    log.Fatal(http.ListenAndServe(":8007", nil))
+    Log.SetLevel(logrus.ErrorLevel)
+    Log.Fatal(http.ListenAndServe(":8007", nil))
 }
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {
@@ -50,15 +50,15 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 func GetUserHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     username := vars["username"]
-    log.Debug(username)
+    Log.Debug(username)
     var res response
     user, err := findUser(username)
     if err != nil {
-        log.Info(err)
+        Log.Info(err)
         res.Status = "error"
         res.Error = err.Error()
     } else {
-        log.Debug(user)
+        Log.Debug(user)
         res.Status = "OK"
         var userRes userResponse
         userRes.Email = user.Email

@@ -31,13 +31,13 @@ func main() {
     log, f, err = wrappers.FileLogger("verify.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
-    log.Fatal(http.ListenAndServe(":8004", nil))
+    Log.SetLevel(logrus.ErrorLevel)
+    Log.Fatal(http.ListenAndServe(":8004", nil))
 }
 
 
@@ -54,7 +54,7 @@ func VerifyHandler(w http.ResponseWriter, req *http.Request) {
       if(user_exists(verif)){
           r.Status = "OK"
       }else {
-        log.Error("Input not valid!")
+        Log.Error("Input not valid!")
         r.Status = "error"
         r.Error = "Could not complete verification"
       }
@@ -73,8 +73,8 @@ func validateParams(verif verification) bool {
         valid = false
     }
     if (valid) {
-        log.Debug("Key: ", *verif.Key)
-        log.Debug("Email: ", *verif.Email)
+        Log.Debug("Key: ", *verif.Key)
+        Log.Debug("Email: ", *verif.Email)
     }
     return valid
 }
@@ -82,7 +82,7 @@ func validateParams(verif verification) bool {
 func user_exists(verif verification) bool {
     client, err := wrappers.NewClient()
     if err != nil {
-        log.Error("Mongodb error")
+        Log.Error("Mongodb error")
         return false
     }
     db := client.Database("twitter")
@@ -97,7 +97,7 @@ func user_exists(verif verification) bool {
         context.Background(),
         filter, update)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
     }
     return result.ModifiedCount == 1
 }

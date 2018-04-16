@@ -35,19 +35,19 @@ func main() {
     log, f, err = wrappers.FileLogger("login.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.InfoLevel)
-    log.Fatal(http.ListenAndServe(":8003", nil))
+    Log.SetLevel(logrus.InfoLevel)
+    Log.Fatal(http.ListenAndServe(":8003", nil))
 }
 
 func authUser(details userDetails) bool {
     client, err := wrappers.NewClient()
     if err != nil {
-        log.Error("Mongodb error")
+        Log.Error("Mongodb error")
         return false
     }
     var user user.User
@@ -96,7 +96,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
         http.SetCookie(w, &cookie)
     }
     elapsed := time.Since(timeStart)
-    log.Info("elapsed: " + elapsed.String())
+    Log.Info("elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 

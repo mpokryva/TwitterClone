@@ -41,13 +41,13 @@ func main() {
     log, f, err = wrappers.FileLogger("additem.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
-    log.Fatal(http.ListenAndServe(":8000", nil))
+    Log.SetLevel(logrus.ErrorLevel)
+    Log.Fatal(http.ListenAndServe(":8000", nil))
 }
 
 
@@ -67,14 +67,14 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
     db := client.Database("twitter")
     col := db.Collection("tweets")
     oid := objectid.New()
-    log.Debug(oid.Hex())
+    Log.Debug(oid.Hex())
     it.ID = oid
     it.Timestamp = time.Now().Unix()
-    log.Debug(it)
+    Log.Debug(it)
     var nilObjectID objectid.ObjectID
     _, err = col.InsertOne(context.Background(), &it)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return nilObjectID, err
     }
     var result *mongo.UpdateResult
@@ -86,11 +86,11 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
             bson.EC.Int32("retweeted", 1)))
         result, err = col.UpdateOne(context.Background(), filter, update)
         if err != nil {
-            log.Error(err)
+            Log.Error(err)
             return nilObjectID, err
         } else if result.ModifiedCount != 1 {
             err = errors.New("Referenced Parent ID not found")
-            log.Error(err)
+            Log.Error(err)
             return nilObjectID, err
         }
     }
@@ -109,16 +109,16 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
             bson.EC.ObjectID("item_ids", oid)))
             result, err = col.UpdateMany(context.Background(), filter, update)
         if err != nil {
-            log.Error(err)
+            Log.Error(err)
             return nilObjectID, err
         } else if result.ModifiedCount != 1 {
             err = errors.New("Media item_ids not updated. Probably invalid ids.")
-            log.Error(err)
+            Log.Error(err)
             return nilObjectID, err
         }
     }
     elapsed := time.Since(start)
-    log.Info("Time elapsed: " + elapsed.String())
+    Log.Info("Time elapsed: " + elapsed.String())
     return oid, nil
 }
 
@@ -137,14 +137,14 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     username, err := checkLogin(r)
     if err != nil {
-      log.Error("User not logged in")
+      Log.Error("User not logged in")
         res.Status = "error"
         res.Error = "User not logged in."
         return
     }
     req, err := decodeRequest(r)
     if (err != nil) {
-        log.Error("JSON decoding error")
+        Log.Error("JSON decoding error")
         res.Status = "error"
         res.Error = "JSON decoding error."
         return
@@ -158,7 +158,7 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
         }
         if req.ParentID != nil {
             it.ParentID = pOID
-            log.Debug(*req.ParentID)
+            Log.Debug(*req.ParentID)
         }
         if req.MediaIDs != nil {
             it.MediaIDs = mOIDs
@@ -178,7 +178,7 @@ func addItemEndpoint(it item.Item) response {
     // Add the Item.
     id, err := insertItem(it)
     if err != nil {
-        log.Error("Item could not be inserted into database.")
+        Log.Error("Item could not be inserted into database.")
         res.Status = "error"
         res.Error = err.Error()
     } else {

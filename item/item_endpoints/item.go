@@ -48,33 +48,33 @@ func main() {
     log, f, err = wrappers.FileLogger("item.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
+    Log.SetLevel(logrus.ErrorLevel)
     http.Handle("/", r)
-    log.Fatal(http.ListenAndServe(":8005", nil))
+    Log.Fatal(http.ListenAndServe(":8005", nil))
 }
 
 //LIKE ITEM FUNCTIONS START HERE
 
 func LikeItemHandler(w http.ResponseWriter, r *http.Request) {
     id := mux.Vars(r)["id"]
-    log.Debug(id)
+    Log.Debug(id)
 
     var res responseL
     username, err := checkLogin(r)
     if err != nil {
-      log.Error("User not logged in")
+      Log.Error("User not logged in")
         res.Status = "error"
         res.Error = "User not logged in."
     } else {
         req, err := decodeRequest(r)
         if (err != nil) {
-          log.Error(r)
-          log.Error("JSON decoding error")
+          Log.Error(r)
+          Log.Error("JSON decoding error")
             res.Status = "error"
             res.Error = "JSON decoding error."
         } else {
@@ -102,7 +102,7 @@ func likeItem(id string, username string, like bool) responseL {
     // col := db.Collection("users")
 
     // if err != nil {
-    //     log.Error("Error connecting to database")
+    //     Log.Error("Error connecting to database")
     //     resp.Status = "error"
     //     resp.Error = "Database unavailable"
     //     return resp
@@ -121,7 +121,7 @@ func likeItem(id string, username string, like bool) responseL {
  //        bson.EC.String("username", username))
  //    err = col.FindOne(context.Background(), checkUserFilter)
  //    if err != nil {
- //        log.Info("User does not exist")
+ //        Log.Info("User does not exist")
  //        resp.Status = "error"
  //        resp.Error = "User in cookie does not exist"
  //        return resp
@@ -129,7 +129,7 @@ func likeItem(id string, username string, like bool) responseL {
 
     col := db.Collection("likes")
     if err != nil {
-        log.Error("Error connecting to database")
+        Log.Error("Error connecting to database")
         resp.Status = "error"
         resp.Error = "Database unavailable"
         return resp//e object into db (username, itemid) *IF NOT EXISTS maybe*
@@ -137,7 +137,7 @@ func likeItem(id string, username string, like bool) responseL {
     //THIS IS BROKEN
     }
     if like {
-    // log.Debug("We are liking")
+    // Log.Debug("We are liking")
     var likeItem Like
     likeItem.ID = objectid
     likeItem.Username = username
@@ -146,7 +146,7 @@ func likeItem(id string, username string, like bool) responseL {
 
     _, err = col.InsertOne(context.Background(), &likeItem)
         if err != nil {
-            log.Info("Error adding to likes collection")
+            Log.Info("Error adding to likes collection")
             resp.Status = "error"
             resp.Error = "Error liking please try again"
             return resp
@@ -158,7 +158,7 @@ func likeItem(id string, username string, like bool) responseL {
     likeItem.Username = username
     _, err = col.DeleteOne(context.Background(), &likeItem)
         if err != nil {
-            log.Info("User does not have an entry in likes for this itemid")
+            Log.Info("User does not have an entry in likes for this itemid")
             resp.Status = "error"
             resp.Error = "You have not liked this tweet before"
             return resp
@@ -186,14 +186,14 @@ func likeItem(id string, username string, like bool) responseL {
         bson.EC.Int32("property.likes", countInc)))
     err = UpdateOne(col, filter, update)
     if err != nil {
-        log.Error("Did not find ObjectID")
+        Log.Error("Did not find ObjectID")
         resp.Status = "error"
         resp.Error = "Invalid 65/iItem ID"
         return resp
     }
     resp.Status = "OK"
     resp.Error = ""
-    // log.Debug("Encoded!")
+    // Log.Debug("Encoded!")
     return resp
 }
 
@@ -203,7 +203,7 @@ func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) e
         filter, update)
     var success = false
     if result != nil {
-        log.Debug(*result)
+        Log.Debug(*result)
         success = result.ModifiedCount == 1
     }
     if err != nil {
@@ -222,7 +222,7 @@ func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) e
 func GetItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     id := mux.Vars(r)["id"]
-    log.Debug(id)
+    Log.Debug(id)
     res = getItemEndpoint(id)
     encodeResponse(w, res)
 }
@@ -236,7 +236,7 @@ func getItem(id string) response {
     var resp response
     client, err := wrappers.NewClient()
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         resp.Status = "error"
         resp.Error = err.Error()
         return resp
@@ -244,10 +244,10 @@ func getItem(id string) response {
     db := client.Database("twitter")
     col := db.Collection("tweets")
     objectid, err := objectid.FromHex(id)
-    log.Debug(objectid)
+    Log.Debug(objectid)
 
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         resp.Status = "error"
         resp.Error = err.Error()
         return resp
@@ -257,7 +257,7 @@ func getItem(id string) response {
         context.Background(),
         filter).Decode(&item)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         resp.Status = "error"
         resp.Error = err.Error()
         return resp
@@ -272,7 +272,7 @@ func getItem(id string) response {
 func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
     var statusCode int
     id := mux.Vars(r)["id"]
-    log.Debug(id)
+    Log.Debug(id)
     statusCode = deleteItemEndpoint(id)
     w.WriteHeader(statusCode)
 }
@@ -284,14 +284,14 @@ func deleteItemEndpoint(id string) int {
 func deleteItem(id string) int {
     client, err := wrappers.NewClient()
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return http.StatusInternalServerError
     }
     db := client.Database("twitter")
     col := db.Collection("tweets")
     objectid, err := objectid.FromHex(id)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return http.StatusBadRequest
     }
     // Pull item from database.
@@ -299,8 +299,8 @@ func deleteItem(id string) int {
     doc := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
     err = col.FindOne(context.Background(), doc).Decode(&it)
     if err != nil {
-        log.Info("item does not exist")
-        log.Error(err)
+        Log.Info("item does not exist")
+        Log.Error(err)
         return http.StatusBadRequest
     }
 
@@ -319,10 +319,10 @@ func deleteItem(id string) int {
             bson.EC.SubDocumentFromElements("$pull",
             bson.EC.ObjectID("item_ids", it.ID)))
             result, err = col.UpdateMany(context.Background(), filter, update)
-            log.Debug(result)
+            Log.Debug(result)
     }
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         return http.StatusInternalServerError
     }
     // Successfully deleted media ids.
@@ -332,8 +332,8 @@ func deleteItem(id string) int {
         context.Background(),
         doc)
     if err != nil {
-        log.Error("Did not find item when deleting.")
-        log.Error(err)
+        Log.Error("Did not find item when deleting.")
+        Log.Error(err)
         return http.StatusInternalServerError
     }
     return http.StatusOK

@@ -32,13 +32,13 @@ func main() {
     log, f, err = wrappers.FileLogger("addmedia.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
-    log.Fatal(http.ListenAndServe(":8011", nil))
+    Log.SetLevel(logrus.ErrorLevel)
+    Log.Fatal(http.ListenAndServe(":8011", nil))
 }
 
 
@@ -66,21 +66,21 @@ func AddMediaHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     username, err := checkLogin(r)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         encodeResponse(w, errResponse(err))
         return
     }
     content, header, err := r.FormFile("content") // Get binary payload.
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         encodeResponse(w, errResponse(err))
         return
     }
     defer content.Close()
-    log.Debug(header.Header)
+    Log.Debug(header.Header)
     bufContent := bytes.NewBuffer(nil)
     if _, err := io.Copy(bufContent, content); err != nil {
-        log.Error(err)
+        Log.Error(err)
         encodeResponse(w, errResponse(err))
         return
     }
@@ -100,7 +100,7 @@ func addMediaEndpoint(m media.Media) response {
     // Add the Media.
     oid, err := insertMedia(m)
     if err != nil {
-        log.Error(err)
+        Log.Error(err)
         res.Status = "error"
         res.Error = err.Error()
     } else {
@@ -123,9 +123,9 @@ func insertMedia(m media.Media) (objectid.ObjectID, error) {
     m.ID = id
     _, err = col.InsertOne(context.Background(), &m)
     elapsed := time.Since(start)
-    log.Info("Time elapsed: " + elapsed.String())
+    Log.Info("Time elapsed: " + elapsed.String())
     if err != nil {
-        log.Error(err.Error())
+        Log.Error(err.Error())
         return nilObjectID, err
     } else {
         return id, nil

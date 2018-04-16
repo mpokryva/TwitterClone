@@ -34,13 +34,13 @@ func main() {
     log, f, err = wrappers.FileLogger("follow.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
-        log.Fatal("Logging file could not be opened.")
+        Log.Fatal("Logging file could not be opened.")
     }
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    log.SetLevel(logrus.ErrorLevel)
-    log.Fatal(http.ListenAndServe(":8009", nil))
+    Log.SetLevel(logrus.ErrorLevel)
+    Log.Fatal(http.ListenAndServe(":8009", nil))
 }
 
 func checkLogin(r *http.Request) (string, error) {
@@ -67,7 +67,7 @@ func followUser(currentUser string, userToFol string, follow bool) error {
     var userToFollow user.User
     err = coll.FindOne(context.Background(), checkUserFilter).Decode(&userToFollow)
     if err != nil {
-        log.Info(err)
+        Log.Info(err)
         return errors.New("User to follow doesn't exist.")
     }
     var listOp string
@@ -122,7 +122,7 @@ func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) e
         filter, update)
     var success = false
     if result != nil {
-        log.Debug(*result)
+        Log.Debug(*result)
         success = result.ModifiedCount == 1
     }
     if err != nil {
@@ -158,7 +158,7 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
             res.Status = "error"
             res.Error = "JSON decoding error."
         } else {
-            log.WithFields(logrus.Fields{
+            Log.WithFields(logrus.Fields{
                 "username": *it.Username,
                 "follow": *it.Follow,
                 "currentUser": username}).Info()
@@ -183,7 +183,7 @@ func followEndpoint(username string,it Request) response {
     } else {
         res.Status = "error"
         res.Error = "Invalid request."
-        log.Info("Invalid request!")
+        Log.Info("Invalid request!")
     }
     return res
 }
