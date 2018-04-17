@@ -136,7 +136,7 @@ func sendError(w http.ResponseWriter, err error) {
 }
 
 func AddUserHandler(w http.ResponseWriter, req *http.Request) {
-    Log.SetLevel(logrus.DebugLevel)
+    Log.SetLevel(logrus.InfoLevel)
     start := time.Now()
     decoder := json.NewDecoder(req.Body)
     var us request

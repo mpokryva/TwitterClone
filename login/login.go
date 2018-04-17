@@ -78,7 +78,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-    Log.SetLevel(logrus.DebugLevel)
+    Log.SetLevel(logrus.InfoLevel)
     timeStart := time.Now()
     var res response
     details, err := decodeRequest(r)

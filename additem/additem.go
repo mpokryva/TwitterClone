@@ -30,11 +30,6 @@ type response struct {
 
 var Log *logrus.Logger
 
-func main() {
-    Log.SetLevel(logrus.ErrorLevel)
-}
-
-
 func checkLogin(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
     if err != nil {
@@ -130,6 +125,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func AddItemHandler(w http.ResponseWriter, r *http.Request) {
+    Log.SetLevel(logrus.InfoLevel)
     var res response
     username, err := checkLogin(r)
     if err != nil {

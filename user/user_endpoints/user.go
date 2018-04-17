@@ -30,7 +30,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func GetUserHandler(w http.ResponseWriter, r *http.Request) {
-    Log.SetLevel(logrus.DebugLevel)
+    Log.SetLevel(logrus.InfoLevel)
     start := time.Now()
     vars := mux.Vars(r)
     username := vars["username"]

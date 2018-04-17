@@ -25,7 +25,7 @@ type res struct {
 var Log *logrus.Logger
 
 func VerifyHandler(w http.ResponseWriter, req *http.Request) {
-    Log.SetLevel(logrus.DebugLevel)
+    Log.SetLevel(logrus.InfoLevel)
     start := time.Now()
     decoder := json.NewDecoder(req.Body)
     var verif verification
