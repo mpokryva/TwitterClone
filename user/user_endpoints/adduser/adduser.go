@@ -156,17 +156,17 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
         sendError(w, err)
         return
     }
+    var res response
+    res.Status = "OK"
+    elapsed := time.Since(start)
+    Log.Info("Add User elapsed: " + elapsed.String())
+    encodeResponse(w, res)
     // Email user once inserted into db.
     err = email(*us.Email, key)
     if err != nil {
         sendError(w, err)
         return
     }
-    var res response
-    res.Status = "OK"
-    elapsed := time.Since(start)
-    Log.Info("Add User elapsed: " + elapsed.String())
-    encodeResponse(w, res)
 }
 
 func email(email string, key string) error {
@@ -174,7 +174,7 @@ func email(email string, key string) error {
     msg := []byte("To: "+email+"\r\n" +
     "Subject: Validation Email\r\n" +
     "\r\n" +
-    "Thank you for joining Twiti!\n This is your validation key: <" + key + "> \n Please click the link to quickly veify your account: "+ link+"\r\n")
+    "Thank you for joining Twiti!\n This is your validation key: " + key + "\n Please click the link to quickly veify your account: "+ link+"\r\n")
     addr := "192.168.1.24:25"
     err := smtp.SendMail(addr, nil,
     "<mongo-config>",
