@@ -23,12 +23,9 @@ type res struct {
     Error string `json:"error,omitempty"`
 }
 var Log *logrus.Logger
-func main() {
-    Log.SetLevel(logrus.ErrorLevel)
-}
-
 
 func VerifyHandler(w http.ResponseWriter, req *http.Request) {
+    Log.SetLevel(logrus.DebugLevel)
     start := time.Now()
     decoder := json.NewDecoder(req.Body)
     var verif verification
@@ -79,7 +76,11 @@ func verifyUser(verif verification) bool {
     db := client.Database("twitter")
     coll := db.Collection("emails")
     // Find user.
+    dbStart := time.Now()
     filter := bson.NewDocument(bson.EC.String("email", *verif.Email))
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed",
+        "timeElapsed":elapsed.String()}).Info()
     result := bson.NewDocument()
     err = coll.FindOne(context.Background(), filter).Decode(result)
     elem, err := result.Lookup("_id")
@@ -133,20 +134,16 @@ func mongoUpdateVerify(userID objectid.ObjectID) error {
     result, err := coll.UpdateOne(
         context.Background(),
         filter, update)
-    if err != nil {
-        elapsed := time.Since(dbStart)
-        Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed",
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"msg":"Update user verified field",
         "timeElapsed":elapsed.String()}).Error(err)
+    if err != nil {
         return err
     }
-    elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed",
-    "timeElapsed":elapsed.String()}).Info()
     if result.ModifiedCount == 1 {
         return nil
     } else {
         err = errors.New("ModifiedCount == 0... Something weird happened.")
-        Log.Error(err)
         return err
     }
 }
