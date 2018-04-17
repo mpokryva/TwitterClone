@@ -14,7 +14,6 @@ import (
     "net/smtp"
     "math/rand"
     "strconv"
-    "golang.org/x/crypto/bcrypt"
     "TwitterClone/user"
     "TwitterClone/wrappers"
 )
@@ -35,25 +34,28 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func insertUser(user user.User, key string) error {
+func insertUser(username string, email string, password string) (string, error) {
     dbStart := time.Now()
+    var user user.User
+    user.Username = username
+    user.Email = email
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
-        return err
+        return "", err
     }
     db := client.Database("twitter")
     coll := db.Collection("emails")
-    filter := bson.NewDocument(bson.EC.String("email", user.Email))
+    filter := bson.NewDocument(bson.EC.String("email", email))
     result := bson.NewDocument()
     err = coll.FindOne(context.Background(), filter).Decode(result)
     elapsed := time.Since(dbStart)
     Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"email FindOne time elapsed",
         "timeElapsed":elapsed.String()}).Info()
     if err == nil { // Email exists.
-        err = errors.New("The email " + user.Email + " is already in use.")
+        err = errors.New("The email " + email + " is already in use.")
         Log.Error(err)
-        return err
+        return "", err
     }
     // If error is not nil, this probably means it wasn't found.
     // However, it's possible it's an actual error, so it's being logged.
@@ -61,7 +63,7 @@ func insertUser(user user.User, key string) error {
         "error": err.Error()}).Debug()
 
     coll = db.Collection("usernames")
-    filter = bson.NewDocument(bson.EC.String("username", user.Username))
+    filter = bson.NewDocument(bson.EC.String("username", username))
     dbStart = time.Now()
     result = bson.NewDocument()
     err = coll.FindOne(context.Background(), filter).Decode(result)
@@ -69,28 +71,32 @@ func insertUser(user user.User, key string) error {
     Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"username FindOne time elapsed",
         "timeElapsed":elapsed.String()}).Info()
     if err == nil { // Username exists.
-        err = errors.New("The username " + user.Username + " is already in use.")
+        err = errors.New("The username " + username + " is already in use.")
         Log.Error(err)
-        return err
+        return "", err
     }
     // If error is not nil, this probably means it wasn't found.
     // However, it's possible it's an actual error, so it's being logged.
     Log.WithFields(logrus.Fields{"endpoint":"adduser", "msg": "username FindOne error",
         "error": err.Error()}).Debug()
-    bytePassword := []byte(user.Password)
-    hashedPassword, err := bcrypt.GenerateFromPassword(bytePassword, bcrypt.DefaultCost)
-    if err != nil {
-        Log.Error(err)
-        return err
-    }
-    user.Password = (string)(hashedPassword)
-    user.Key = "<"+key+">"
+    hashedPassword := md5.Sum([]byte(password))
+    user.Password = hashedPassword[:]
     user.Verified = false
     oid := objectid.New()
     user.ID = oid
     Log.Debug(oid)
+    // Create the hashed verification key.
+    num := rand.Int()
+    numstring := strconv.Itoa(num)
+    Log.Println(num, numstring)
+    hasher := md5.New()
+    hasher.Write([]byte(user.Username))
+    hasher.Write([]byte(numstring))
+    key := hex.EncodeToString(hasher.Sum(nil))
+    user.Key = "<" + key + ">"
     dbStart = time.Now()
     // Update users collection.
+    Log.Debug(user)
     coll = db.Collection("users")
     _, err = coll.InsertOne(context.Background(), &user)
     elapsed = time.Since(dbStart)
@@ -98,6 +104,7 @@ func insertUser(user user.User, key string) error {
         "timeElapsed":elapsed.String()}).Info()
     if err != nil {
         Log.Error(err)
+        return "", nil
     }
     // Update usernames collection.
     coll = db.Collection("usernames")
@@ -107,6 +114,7 @@ func insertUser(user user.User, key string) error {
     _, err = coll.InsertOne(context.Background(), doc)
     if err != nil {
         Log.Error(err)
+        return "", nil
     }
     // Update emails collection.
     coll = db.Collection("emails")
@@ -117,7 +125,7 @@ func insertUser(user user.User, key string) error {
     if err != nil {
         Log.Error(err)
     }
-    return err
+    return user.Key, err
 }
 
 func sendError(w http.ResponseWriter, err error) {
@@ -142,49 +150,35 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
         sendError(w, err)
         return
     }
-    var user user.User
-    user.Email = *us.Email
-    user.Username = *us.Username
-    user.Password = *us.Password
-    Log.Debug(user)
-    // Create the hashed verification key.
-    num := rand.Int()
-    numstring := strconv.Itoa(num)
-    Log.Println(num, numstring)
-    hasher := md5.New()
-    hasher.Write([]byte(user.Username))
-    hasher.Write([]byte(numstring))
-    key := hex.EncodeToString(hasher.Sum(nil))
     // Add the user.
-    err = insertUser(user, key)
+    key, err := insertUser(*us.Username, *us.Email, *us.Password)
     if err != nil {
         sendError(w, err)
         return
     }
     // Email user once inserted into db.
-    err = email(user, key)
+    err = email(*us.Email, key)
     if err != nil {
         sendError(w, err)
         return
     }
     var res response
     res.Status = "OK"
-
     elapsed := time.Since(start)
     Log.Info("Add User elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 
-func email(us user.User, key string) error {
-    link := "http://nsamba.cse356.compas.cs.stonybrook.edu/verify?email="+us.Email+"&key="+key
-    msg := []byte("To: "+us.Email+"\r\n" +
+func email(email string, key string) error {
+    link := "http://nsamba.cse356.compas.cs.stonybrook.edu/verify?email="+email+"&key="+key
+    msg := []byte("To: "+email+"\r\n" +
     "Subject: Validation Email\r\n" +
     "\r\n" +
     "Thank you for joining Twiti!\n This is your validation key: <" + key + "> \n Please click the link to quickly veify your account: "+ link+"\r\n")
     addr := "192.168.1.24:25"
     err := smtp.SendMail(addr, nil,
     "<mongo-config>",
-       []string{us.Email}, msg)
+    []string{email}, msg)
     if err != nil {
         Log.Error(err)
     }

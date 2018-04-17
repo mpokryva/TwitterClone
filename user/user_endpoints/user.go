@@ -24,20 +24,14 @@ type userResponse struct {
     Following int `json:"following"`
 }
 var Log *logrus.Logger
-func main() {
-    r := mux.NewRouter()
-    r.HandleFunc("/user/{username}", GetUserHandler).Methods("GET")
-    http.Handle("/", r)
-    Log.SetLevel(logrus.ErrorLevel)
-}
-
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
 func GetUserHandler(w http.ResponseWriter, r *http.Request) {
-  start := time.Now()
+    Log.SetLevel(logrus.DebugLevel)
+    start := time.Now()
     vars := mux.Vars(r)
     username := vars["username"]
     Log.Debug(username)

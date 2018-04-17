@@ -2,13 +2,13 @@ package login
 
 import (
     "context"
-
+    "bytes"
     "time"
     "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
     "github.com/mongodb/mongo-go-driver/bson"
-    "golang.org/x/crypto/bcrypt"
+    "crypto/md5"
     "TwitterClone/user"
     "TwitterClone/wrappers"
 )
@@ -60,8 +60,8 @@ func authUser(details userDetails) bool {
         Log.Debug(user)
     }
     encStart := time.Now()
-    authed := user.Verified && bcrypt.CompareHashAndPassword([]byte(user.Password),
-    []byte(*details.Password)) == nil
+    inputPw := md5.Sum([]byte(*details.Password))
+    authed := user.Verified && bytes.Equal(inputPw[:], user.Password)
     elapsed = time.Since(encStart)
     Log.Info("encryption elapsed: " + elapsed.String())
     return authed
