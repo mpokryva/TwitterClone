@@ -2,7 +2,7 @@ package verify
 
 import (
     "context"
-    
+    "time"
     logrus "github.com/sirupsen/logrus"
     "net/http"
     "encoding/json"
@@ -26,6 +26,7 @@ func main() {
 
 
 func VerifyHandler(w http.ResponseWriter, req *http.Request) {
+  start := time.Now()
     decoder := json.NewDecoder(req.Body)
     var verif verification
     var r res
@@ -46,6 +47,9 @@ func VerifyHandler(w http.ResponseWriter, req *http.Request) {
     r.Status = "error"
     r.Error = "Not enough input"
   }
+
+  elapsed := time.Since(start)
+  Log.Info("Verify elapsed: " + elapsed.String())
   json.NewEncoder(w).Encode(r)
 }
 
@@ -64,6 +68,7 @@ func validateParams(verif verification) bool {
 }
 
 func user_exists(verif verification) bool {
+    dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error("Mongodb error")
@@ -81,7 +86,10 @@ func user_exists(verif verification) bool {
         context.Background(),
         filter, update)
     if err != nil {
-        Log.Error(err)
+      elapsed := time.Since(dbStart)
+      Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Error(err)
     }
+      elapsed := time.Since(dbStart)
+      Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Info()
     return result.ModifiedCount == 1
 }

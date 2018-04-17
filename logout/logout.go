@@ -1,6 +1,7 @@
 package logout
 
 import (
+  "time"
     "net/http"
     "encoding/json"
     logrus "github.com/sirupsen/logrus"
@@ -26,10 +27,14 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
     cookie, res := logoutEndpoint(r)
     if (cookie != nil) {
         http.SetCookie(w, cookie)
     }
+
+    elapsed := time.Since(start)
+    Log.Info("Log out elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 

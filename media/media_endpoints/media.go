@@ -3,7 +3,7 @@ package media_endpoints
 import (
     "context"
     "net/http"
-    
+    "time"
     "errors"
     "strconv"
     "github.com/sirupsen/logrus"
@@ -19,7 +19,10 @@ func main() {
     Log.SetLevel(logrus.ErrorLevel)
 }
 
+
+
 func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
     vars := mux.Vars(r)
     id := vars["id"]
     Log.Debug(id)
@@ -33,10 +36,14 @@ func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
             Log.Error(err)
         }
     }
+
+    elapsed := time.Since(start)
+    Log.Info("AddItem elapsed: " + elapsed.String())
     encodeResponse(w, media)
 }
 
 func getMedia(oid objectid.ObjectID) (media.Media, error) {
+  dbStart := time.Now()
     var nilMedia media.Media
     client, err := wrappers.NewClient()
     if err != nil {
@@ -47,6 +54,8 @@ func getMedia(oid objectid.ObjectID) (media.Media, error) {
     var media media.Media
     filter := bson.NewDocument(bson.EC.ObjectID("_id", oid))
     err = coll.FindOne(context.Background(), filter).Decode(&media)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"timeElapsed":elapsed.String()}).Info("Get Media time elapsed")
     return media, err
 }
 

@@ -4,7 +4,7 @@ import (
     "context"
     "net/http"
     logrus "github.com/sirupsen/logrus"
-    
+    "time"
     "encoding/json"
     "TwitterClone/wrappers"
     "github.com/gorilla/mux"
@@ -31,11 +31,13 @@ func main() {
     Log.SetLevel(logrus.ErrorLevel)
 }
 
+
 func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
 func GetUserHandler(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
     vars := mux.Vars(r)
     username := vars["username"]
     Log.Debug(username)
@@ -54,10 +56,14 @@ func GetUserHandler(w http.ResponseWriter, r *http.Request) {
         userRes.Followers = user.FollowerCount
         res.User = userRes
     }
+
+    elapsed := time.Since(start)
+    Log.Info("Get User elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 
 func findUser(username string) (*user.User, error) {
+  dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         return nil, err
@@ -68,6 +74,8 @@ func findUser(username string) (*user.User, error) {
     var user user.User
     err = coll.FindOne(context.Background(),
         filter).Decode(&user)
+
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"msg":"Finding user in db time elapsed", "timeElapsed":elapsed.String()}).Info()
     return &user, err
 }
-

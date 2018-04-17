@@ -4,7 +4,7 @@ import (
     "context"
     "net/http"
     "time"
-    
+
     "errors"
     "github.com/sirupsen/logrus"
     "encoding/json"
@@ -34,6 +34,7 @@ func main() {
     Log.SetLevel(logrus.ErrorLevel)
 }
 
+
 func checkLogin(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
     if err != nil {
@@ -55,7 +56,11 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
     it.Timestamp = time.Now().Unix()
     Log.Debug(it)
     var nilObjectID objectid.ObjectID
+    dbStart := time.Now()
     _, err = col.InsertOne(context.Background(), &it)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Info("insert item time elapsed")
+
     if err != nil {
         Log.Error(err)
         return nilObjectID, err
@@ -67,7 +72,11 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
         update := bson.NewDocument(
             bson.EC.SubDocumentFromElements("$inc",
             bson.EC.Int32("retweeted", 1)))
+            dbStart := time.Now()
         result, err = col.UpdateOne(context.Background(), filter, update)
+
+        elapsed := time.Since(dbStart)
+        Log.WithFields(logrus.Fields{"endpoint": "addItem", "timeElapsed":elapsed.String()}).Info("retweet increment time elapsed")
         if err != nil {
             Log.Error(err)
             return nilObjectID, err
@@ -90,7 +99,11 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
         update := bson.NewDocument(
             bson.EC.SubDocumentFromElements("$addToSet",
             bson.EC.ObjectID("item_ids", oid)))
+            dbStart :=time.Now()
             result, err = col.UpdateMany(context.Background(), filter, update)
+
+            elapsed := time.Since(dbStart)
+            Log.WithFields(logrus.Fields{"endpoint": "addItem", "timeElapsed":elapsed.String()}).Info("update media time elapsed")
         if err != nil {
             Log.Error(err)
             return nilObjectID, err
@@ -100,8 +113,8 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
             return nilObjectID, err
         }
     }
-    elapsed := time.Since(start)
-    Log.Info("Time elapsed: " + elapsed.String())
+    elapsed = time.Since(start)
+    Log.Info("AddItem elapsed: " + elapsed.String())
     return oid, nil
 }
 

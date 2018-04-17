@@ -4,7 +4,7 @@ import (
     "context"
     "net/http"
     "time"
-    
+
     "io"
     "bytes"
     "github.com/sirupsen/logrus"
@@ -47,6 +47,7 @@ func errResponse(err error) response {
 }
 
 func AddMediaHandler(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
     var res response
     username, err := checkLogin(r)
     if err != nil {
@@ -76,6 +77,9 @@ func AddMediaHandler(w http.ResponseWriter, r *http.Request) {
     m.Content = buf
     m.Username = username
     res = addMediaEndpoint(m)
+
+    elapsed := time.Since(start)
+    Log.Info("Add Media elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 
@@ -107,7 +111,7 @@ func insertMedia(m media.Media) (objectid.ObjectID, error) {
     m.ID = id
     _, err = col.InsertOne(context.Background(), &m)
     elapsed := time.Since(start)
-    Log.Info("Time elapsed: " + elapsed.String())
+    Log.Info("Insert media time elapsed: " + elapsed.String())
     if err != nil {
         Log.Error(err.Error())
         return nilObjectID, err

@@ -6,9 +6,6 @@ import (
     "net/http"
     "github.com/sirupsen/logrus"
     //"github.com/logrustash"
-    "gopkg.in/sohlich/elogrus.v3"
-    //"github.com/sohlich/elogrus"
-	   "github.com/olivere/elastic"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
@@ -41,52 +38,25 @@ type res struct {
   Error string `json:"error,omitempty"`
 }
 
-var Log *logrus.Logger
+var Log = logrus.New()
 func main() {
     r := mux.NewRouter()
     r.HandleFunc("/search", SearchHandler).Methods("POST")
     http.Handle("/", r)
-
-    log := logrus.New()
-	client, err := elastic.NewClient(elastic.SetURL("http://localhost:9200"))
-	if err != nil {
-        Log.Panic(err)
-	}
-	hook, err := elogrus.NewAsyncElasticHook(client, "localhost", logrus.DebugLevel, "twiti")
-	if err != nil {
-		Log.Panic(err)
-	}
-	log.Hooks.Add(hook)
-    log.WithFields(logrus.Fields{
-		"name": "joe",
-        "age":  42,
-    }).Info("Hello world!")
-    // Log to a file
-    // var f *os.File
-    // var err error
-    // log, f, err = wrappers.FileLogger("search.log", os.O_CREATE | os.O_RDWR,
-    //     0666)
-    // if err != nil {
-    //     Log.Fatal("Logging file could not be opened.")
-    // }
-    // f.Truncate(0)
-    // f.Seek(0, 0)
-    // defer f.Close()
-    log.SetLevel(logrus.InfoLevel)
     http.ListenAndServe(":8006", nil)
 }
 
 func getUsername(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
     if err != nil {
-        return "", err  //CHANGE THIS
+        return "", err
     } else {
         return cookie.Value, nil
     }
 }
 
 func SearchHandler(w http.ResponseWriter, req *http.Request) {
-    startTime := time.Now()
+  startTime := time.Now()
     decoder := json.NewDecoder(req.Body)
     var start params
     var r res
@@ -140,7 +110,7 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
         r.Error = err.Error()
     }
     elapsed := time.Since(startTime)
-    Log.Info("elapsed: " + elapsed.String())
+    Log.Info("Search elapsed: " + elapsed.String())
   json.NewEncoder(w).Encode(r)
 }
 

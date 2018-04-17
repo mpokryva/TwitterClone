@@ -25,7 +25,7 @@ func main() {
     // Log to a file
     var f *os.File
     var err error
-    Log, f, err = wrappers.FileLogger("central.log", os.O_CREATE | os.O_RDWR,
+    Log, f, err = wrappers.FileElasticLogger("central.log", os.O_CREATE | os.O_RDWR,
         0666)
     if err != nil {
         Log.Fatal("Logging file could not be opened.")
@@ -33,7 +33,7 @@ func main() {
     f.Truncate(0)
     f.Seek(0, 0)
     defer f.Close()
-    Log.SetLevel(logrus.ErrorLevel)
+    Log.SetLevel(logrus.InfoLevel)
     injectLogger()
     router := NewRouter()
     http.Handle("/", router)

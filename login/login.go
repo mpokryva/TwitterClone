@@ -2,7 +2,7 @@ package login
 
 import (
     "context"
-    
+
     "time"
     "github.com/sirupsen/logrus"
     "net/http"
@@ -28,6 +28,7 @@ func main() {
     Log.SetLevel(logrus.InfoLevel)
 }
 
+
 func authUser(details userDetails) bool {
     client, err := wrappers.NewClient()
     if err != nil {
@@ -35,6 +36,7 @@ func authUser(details userDetails) bool {
         return false
     }
     var user user.User
+    dbStart := time.Now()
     db := client.Database("twitter")
     coll := db.Collection("users")
     filter := bson.NewDocument(bson.EC.String("username", *details.Username),
@@ -42,6 +44,8 @@ func authUser(details userDetails) bool {
     err = coll.FindOne(
         context.Background(),
         filter).Decode(&user)
+      elapsed := time.Since(dbStart)
+      Log.WithFields(logrus.Fields{"endpoint" : "login","msg":"Check if user exists in DB time elapsed", "timeElapsed":elapsed.String()}).Info()
     if err != nil {
         return false
     }

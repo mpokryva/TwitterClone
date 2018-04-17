@@ -1,6 +1,7 @@
 package adduser
 
 import (
+  "time"
     "context"
     "errors"
     "github.com/sirupsen/logrus"
@@ -37,6 +38,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func insertUser(user user.User, key string) error {
+  dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
@@ -46,6 +48,9 @@ func insertUser(user user.User, key string) error {
     col := db.Collection("users")
     filter := bson.NewDocument(bson.EC.String("email", user.Email))
     count, err := col.Count(context.Background(), filter);
+
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"email count time elapsed", "timeElapsed":elapsed.String()}).Info()
     if count > 0 {
         err = errors.New("The email " + user.Email + " is already in use.")
         Log.Error(err)
@@ -55,7 +60,11 @@ func insertUser(user user.User, key string) error {
         return err
     }
     filter = bson.NewDocument(bson.EC.String("username", user.Username))
+    dbStart = time.Now()
     count, err = col.Count(context.Background(), filter);
+
+    elapsed = time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"username count time elapsed", "timeElapsed":elapsed.String()}).Info()
     if count > 0 {
         err = errors.New("The username " + user.Username + " is already in use.")
         Log.Error(err)
@@ -73,7 +82,11 @@ func insertUser(user user.User, key string) error {
     user.Password = (string)(hashedPassword)
     user.Key = "<"+key+">"
     user.Verified = false
+    dbStart = time.Now()
     _, err = col.InsertOne(context.Background(), &user)
+
+    elapsed = time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"insert a user time elapsed", "timeElapsed":elapsed.String()}).Info()
     if err != nil {
         Log.Error(err)
     }
@@ -88,6 +101,7 @@ func sendError(w http.ResponseWriter, err error) {
 }
 
 func AddUserHandler(w http.ResponseWriter, req *http.Request) {
+  start := time.Now()
     decoder := json.NewDecoder(req.Body)
     var us request
     err := decoder.Decode(&us)
@@ -127,6 +141,9 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     }
     var res response
     res.Status = "OK"
+
+    elapsed := time.Since(start)
+    Log.Info("Add User elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 

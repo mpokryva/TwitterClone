@@ -3,7 +3,7 @@ package follow
 import (
     "context"
     "net/http"
-    
+    "time"
     "errors"
     "github.com/sirupsen/logrus"
     "encoding/json"
@@ -27,6 +27,8 @@ func main() {
     Log.SetLevel(logrus.ErrorLevel)
 }
 
+
+
 func checkLogin(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
     if err != nil {
@@ -37,6 +39,7 @@ func checkLogin(r *http.Request) (string, error) {
 }
 
 func followUser(currentUser string, userToFol string, follow bool) error {
+  dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         return nil
@@ -50,6 +53,8 @@ func followUser(currentUser string, userToFol string, follow bool) error {
         bson.EC.String("username", userToFol))
     var userToFollow user.User
     err = coll.FindOne(context.Background(), checkUserFilter).Decode(&userToFollow)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint": "follow", "timeElapsed":elapsed.String()}).Info("Check if user exists time elapsed")
     if err != nil {
         Log.Info(err)
         return errors.New("User to follow doesn't exist.")
@@ -101,9 +106,13 @@ func followUser(currentUser string, userToFol string, follow bool) error {
 }
 
 func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) error {
+  dbStart := time.Now()
     result, err := coll.UpdateMany( // UpdateMany is temporary.
         context.Background(),
         filter, update)
+
+      elapsed := time.Since(dbStart)
+      Log.WithFields(logrus.Fields{"endpoint": "follow", "timeElapsed":elapsed.String()}).Info("updating time elapsed")
     var success = false
     if result != nil {
         Log.Debug(*result)
@@ -131,6 +140,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func FollowHandler(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
     var res response
     username, err := checkLogin(r)
     if err != nil {
@@ -149,6 +159,9 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
             res = followEndpoint(username, it)
         }
     }
+
+    elapsed := time.Since(start)
+    Log.Info("AddItem elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 

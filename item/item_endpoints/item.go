@@ -5,7 +5,7 @@ import (
     "errors"
     logrus "github.com/sirupsen/logrus"
     "net/http"
-    
+    "time"
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
@@ -41,9 +41,11 @@ func main() {
     Log.SetLevel(logrus.ErrorLevel)
 }
 
+
 //LIKE ITEM FUNCTIONS START HERE
 
 func LikeItemHandler(w http.ResponseWriter, r *http.Request) {
+  start := time.Now()
     id := mux.Vars(r)["id"]
     Log.Debug(id)
 
@@ -64,6 +66,9 @@ func LikeItemHandler(w http.ResponseWriter, r *http.Request) {
             res = likeItemEndpoint(id, username, *req.Like)
         }
     }
+
+    elapsed := time.Since(start)
+    Log.Info("AddItem elapsed: " + elapsed.String())
     encodeResponse(w, res)
 }
 
@@ -80,6 +85,7 @@ func likeItemEndpoint(id string, username string, like bool) responseL {
 
 func likeItem(id string, username string, like bool) responseL {
     var resp responseL
+    dbStart := time.Now()
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
     // col := db.Collection("users")
@@ -92,6 +98,8 @@ func likeItem(id string, username string, like bool) responseL {
     // }
 
     objectid,err := objectid.FromHex(id)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Like an item db query time elapsed")
     if err != nil {
         resp.Status = "error"
         resp.Error = "Invalid Item ID format"
@@ -109,7 +117,7 @@ func likeItem(id string, username string, like bool) responseL {
  //        resp.Error = "User in cookie does not exist"
  //        return resp
  //    }
-
+  dbStart = time.Now()
     col := db.Collection("likes")
     if err != nil {
         Log.Error("Error connecting to database")
@@ -128,6 +136,8 @@ func likeItem(id string, username string, like bool) responseL {
     //////////////////
 
     _, err = col.InsertOne(context.Background(), &likeItem)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Inserting a like time elapsed")
         if err != nil {
             Log.Info("Error adding to likes collection")
             resp.Status = "error"
@@ -140,6 +150,8 @@ func likeItem(id string, username string, like bool) responseL {
     likeItem.ID = objectid
     likeItem.Username = username
     _, err = col.DeleteOne(context.Background(), &likeItem)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Delete like time elapsed")
         if err != nil {
             Log.Info("User does not have an entry in likes for this itemid")
             resp.Status = "error"
@@ -168,6 +180,7 @@ func likeItem(id string, username string, like bool) responseL {
     update := bson.NewDocument(bson.EC.SubDocumentFromElements("$inc",
         bson.EC.Int32("property.likes", countInc)))
     err = UpdateOne(col, filter, update)
+
     if err != nil {
         Log.Error("Did not find ObjectID")
         resp.Status = "error"
@@ -181,9 +194,12 @@ func likeItem(id string, username string, like bool) responseL {
 }
 
 func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) error {
+  dbStart := time.Now()
     result, err := coll.UpdateOne(
         context.Background(),
         filter, update)
+        elapsed := time.Since(dbStart)
+        Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Update time elapsed")
     var success = false
     if result != nil {
         Log.Debug(*result)
@@ -217,6 +233,7 @@ func getItemEndpoint(id string) response {
 func getItem(id string) response {
     var item item.Item
     var resp response
+    dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
@@ -239,6 +256,9 @@ func getItem(id string) response {
     err = col.FindOne(
         context.Background(),
         filter).Decode(&item)
+
+        elapsed := time.Since(dbStart)
+        Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Get item time elapsed")
     if err != nil {
         Log.Error(err)
         resp.Status = "error"
@@ -265,6 +285,7 @@ func deleteItemEndpoint(id string) int {
 }
 
 func deleteItem(id string) int {
+  dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
@@ -304,6 +325,9 @@ func deleteItem(id string) int {
             result, err = col.UpdateMany(context.Background(), filter, update)
             Log.Debug(result)
     }
+
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Delete associated media elapsed")
     if err != nil {
         Log.Error(err)
         return http.StatusInternalServerError
@@ -314,6 +338,9 @@ func deleteItem(id string) int {
     _, err = col.DeleteOne(
         context.Background(),
         doc)
+
+      elapsed = time.Since(dbStart)
+      Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Delete actual item time elapsed")
     if err != nil {
         Log.Error("Did not find item when deleting.")
         Log.Error(err)

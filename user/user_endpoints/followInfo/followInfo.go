@@ -7,7 +7,7 @@ import (
     logrus "github.com/sirupsen/logrus"
     "encoding/json"
     "TwitterClone/wrappers"
-    
+    "time"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
     "TwitterClone/user"
@@ -50,6 +50,7 @@ func checkLimit() (params,error){
 }
 
 func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
+start := time.Now()
     var resp response
     p, e := checkLimit()
     if e != nil{
@@ -64,15 +65,22 @@ func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
         Log.Info(err)
         resp.Status = "error"
         resp.Error = err.Error()
+
+    elapsed := time.Since(start)
+    Log.Info("Get Following elapsed: " + elapsed.String())
         encodeResponse(w,resp)
     }else{
       resp.Status = "OK"
       resp.Users = list
+
+    elapsed := time.Since(start)
+    Log.Info("Get Following elapsed: " + elapsed.String())
       encodeResponse(w, resp)
     }
 }
 
 func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
+start := time.Now()
     var resp response
     p, e := checkLimit()
     if e != nil{
@@ -87,10 +95,16 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
         Log.Info(err)
         resp.Status = "error"
         resp.Error = err.Error()
+
+    elapsed := time.Since(start)
+    Log.Info("Get Followers elapsed: " + elapsed.String())
         encodeResponse(w,resp)
     }else{
       resp.Status = "OK"
       resp.Users = list
+
+    elapsed := time.Since(start)
+    Log.Info("Get Followers elapsed: " + elapsed.String())
       encodeResponse(w, resp)
     }
 }
@@ -144,6 +158,7 @@ func createList(p params, res bson.Element) ([]string,error) {
 }
 
 func findUser(username string) (user.User,error){
+  dbStart := time.Now()
   var foundUser user.User
   client, err := wrappers.NewClient()
   if err != nil {
@@ -157,8 +172,12 @@ func findUser(username string) (user.User,error){
       filter).Decode(&foundUser)
   Log.Debug(foundUser)
   if err != nil{
-    Log.Error("Could not find user")
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Error("Could not find user")
     return foundUser,errors.New("Could not find user")
   }
+
+  elapsed := time.Since(dbStart)
+  Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Info()
   return foundUser,nil
 }
