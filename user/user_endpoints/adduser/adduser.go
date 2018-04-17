@@ -8,6 +8,7 @@ import (
     "net/http"
     "encoding/json"
     "github.com/mongodb/mongo-go-driver/bson"
+    "github.com/mongodb/mongo-go-driver/bson/objectid"
     "crypto/md5"
     "encoding/hex"
     "net/smtp"
@@ -29,50 +30,53 @@ type response struct {
     Error string `json:"error,omitempty"`
 }
 var Log *logrus.Logger
-func main() {
-    Log.SetLevel(logrus.ErrorLevel)
-}
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
 func insertUser(user user.User, key string) error {
-  dbStart := time.Now()
+    dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
         return err
     }
     db := client.Database("twitter")
-    col := db.Collection("users")
+    coll := db.Collection("emails")
     filter := bson.NewDocument(bson.EC.String("email", user.Email))
-    count, err := col.Count(context.Background(), filter);
-
+    result := bson.NewDocument()
+    err = coll.FindOne(context.Background(), filter).Decode(result)
     elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"email count time elapsed", "timeElapsed":elapsed.String()}).Info()
-    if count > 0 {
+    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"email FindOne time elapsed",
+        "timeElapsed":elapsed.String()}).Info()
+    if err == nil { // Email exists.
         err = errors.New("The email " + user.Email + " is already in use.")
         Log.Error(err)
         return err
-    } else if err != nil {
-        Log.Error(err)
-        return err
     }
+    // If error is not nil, this probably means it wasn't found.
+    // However, it's possible it's an actual error, so it's being logged.
+    Log.WithFields(logrus.Fields{"endpoint":"adduser", "msg": "email FindOne error",
+        "error": err.Error()}).Debug()
+
+    coll = db.Collection("usernames")
     filter = bson.NewDocument(bson.EC.String("username", user.Username))
     dbStart = time.Now()
-    count, err = col.Count(context.Background(), filter);
-
+    result = bson.NewDocument()
+    err = coll.FindOne(context.Background(), filter).Decode(result)
     elapsed = time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"username count time elapsed", "timeElapsed":elapsed.String()}).Info()
-    if count > 0 {
+    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"username FindOne time elapsed",
+        "timeElapsed":elapsed.String()}).Info()
+    if err == nil { // Username exists.
         err = errors.New("The username " + user.Username + " is already in use.")
         Log.Error(err)
         return err
-    } else if err != nil {
-        Log.Error(err)
-        return err
     }
+    // If error is not nil, this probably means it wasn't found.
+    // However, it's possible it's an actual error, so it's being logged.
+    Log.WithFields(logrus.Fields{"endpoint":"adduser", "msg": "username FindOne error",
+        "error": err.Error()}).Debug()
     bytePassword := []byte(user.Password)
     hashedPassword, err := bcrypt.GenerateFromPassword(bytePassword, bcrypt.DefaultCost)
     if err != nil {
@@ -82,11 +86,34 @@ func insertUser(user user.User, key string) error {
     user.Password = (string)(hashedPassword)
     user.Key = "<"+key+">"
     user.Verified = false
+    oid := objectid.New()
+    user.ID = oid
+    Log.Debug(oid)
     dbStart = time.Now()
-    _, err = col.InsertOne(context.Background(), &user)
-
+    // Update users collection.
+    coll = db.Collection("users")
+    _, err = coll.InsertOne(context.Background(), &user)
     elapsed = time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"insert a user time elapsed", "timeElapsed":elapsed.String()}).Info()
+    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"insert a user time elapsed",
+        "timeElapsed":elapsed.String()}).Info()
+    if err != nil {
+        Log.Error(err)
+    }
+    // Update usernames collection.
+    coll = db.Collection("usernames")
+    doc := bson.NewDocument(
+        bson.EC.String("username", user.Username),
+        bson.EC.ObjectID("_id", user.ID))
+    _, err = coll.InsertOne(context.Background(), doc)
+    if err != nil {
+        Log.Error(err)
+    }
+    // Update emails collection.
+    coll = db.Collection("emails")
+    doc = bson.NewDocument(
+        bson.EC.String("email", user.Email),
+        bson.EC.ObjectID("_id", user.ID))
+    _, err = coll.InsertOne(context.Background(), doc)
     if err != nil {
         Log.Error(err)
     }
@@ -101,7 +128,8 @@ func sendError(w http.ResponseWriter, err error) {
 }
 
 func AddUserHandler(w http.ResponseWriter, req *http.Request) {
-  start := time.Now()
+    Log.SetLevel(logrus.DebugLevel)
+    start := time.Now()
     decoder := json.NewDecoder(req.Body)
     var us request
     err := decoder.Decode(&us)

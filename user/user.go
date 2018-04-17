@@ -1,6 +1,11 @@
 package user
 
+import (
+    "github.com/mongodb/mongo-go-driver/bson/objectid"
+)
+
 type User struct {
+    ID objectid.ObjectID `json:"id" bson:"_id,omitempty"`
     Username string `json:"username,omitempty" bson:"username"`
     Email string `json:"email,omitempty" bson:"email"`
     Password string `json:"password,omitempty" bson:"password"`
@@ -11,4 +16,3 @@ type User struct {
     Verified bool `json:"verified,omitempty" bson:"verified"`
     Key string `json:"key,omitempty" bson:"key"`
 }
-

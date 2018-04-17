@@ -24,10 +24,6 @@ type userDetails struct {
     Password *string `json:"password"`
 }
 var Log *logrus.Logger
-func main() {
-    Log.SetLevel(logrus.InfoLevel)
-}
-
 
 func authUser(details userDetails) bool {
     client, err := wrappers.NewClient()
@@ -35,22 +31,39 @@ func authUser(details userDetails) bool {
         Log.Error("Mongodb error")
         return false
     }
-    var user user.User
     dbStart := time.Now()
     db := client.Database("twitter")
-    coll := db.Collection("users")
-    filter := bson.NewDocument(bson.EC.String("username", *details.Username),
-            bson.EC.Boolean("verified", true))
-    err = coll.FindOne(
-        context.Background(),
-        filter).Decode(&user)
-      elapsed := time.Since(dbStart)
-      Log.WithFields(logrus.Fields{"endpoint" : "login","msg":"Check if user exists in DB time elapsed", "timeElapsed":elapsed.String()}).Info()
+    coll := db.Collection("usernames")
+    filter := bson.NewDocument(bson.EC.String("username", *details.Username))
+    result := bson.NewDocument()
+    err = coll.FindOne(context.Background(), filter).Decode(result)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint" : "login","msg":"Check if user exists in DB time elapsed",
+        "timeElapsed":elapsed.String()}).Info()
     if err != nil {
         return false
     }
-    authed := bcrypt.CompareHashAndPassword([]byte(user.Password),
+    elem, err := result.Lookup("_id")
+    if err != nil {
+        Log.Error(err)
+        return false
+    }
+    oid := elem.Value().ObjectID()
+    filter = bson.NewDocument(bson.EC.ObjectID("_id", oid))
+    var user user.User
+    coll = db.Collection("users")
+    err = coll.FindOne(context.Background(), filter).Decode(&user)
+    if err != nil {
+        Log.Error(err)
+        return false
+    } else {
+        Log.Debug(user)
+    }
+    encStart := time.Now()
+    authed := user.Verified && bcrypt.CompareHashAndPassword([]byte(user.Password),
     []byte(*details.Password)) == nil
+    elapsed = time.Since(encStart)
+    Log.Info("encryption elapsed: " + elapsed.String())
     return authed
 }
 
@@ -65,6 +78,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+    Log.SetLevel(logrus.DebugLevel)
     timeStart := time.Now()
     var res response
     details, err := decodeRequest(r)
