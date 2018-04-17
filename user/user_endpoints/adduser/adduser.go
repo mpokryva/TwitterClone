@@ -164,8 +164,7 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     // Email user once inserted into db.
     err = email(*us.Email, key)
     if err != nil {
-        sendError(w, err)
-        return
+        Log.Error(err)
     }
 }
 
