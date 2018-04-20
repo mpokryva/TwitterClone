@@ -40,25 +40,20 @@ func checkLogin(r *http.Request) (string, error) {
 }
 
 
-func insertItem(it item.Item) (objectid.ObjectID, error) {
+func insertItem(it item.Item) (error) {
     start := time.Now()
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
     col := db.Collection("tweets")
-    oid := objectid.New()
-    Log.Debug(oid.Hex())
-    it.ID = oid
     it.Timestamp = time.Now().Unix()
     Log.Debug(it)
-    var nilObjectID objectid.ObjectID
     dbStart := time.Now()
     _, err = col.InsertOne(context.Background(), &it)
     elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Info("insert item time elapsed")
+    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Debug("insert item time elapsed")
 
     if err != nil {
-        Log.Error(err)
-        return nilObjectID, err
+        return err
     }
     var result *mongo.UpdateResult
     if it.ChildType == "retweet" {
@@ -73,12 +68,10 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
         elapsed := time.Since(dbStart)
         Log.WithFields(logrus.Fields{"endpoint": "addItem", "timeElapsed":elapsed.String()}).Info("retweet increment time elapsed")
         if err != nil {
-            Log.Error(err)
-            return nilObjectID, err
+            return err
         } else if result.ModifiedCount != 1 {
             err = errors.New("Referenced Parent ID not found")
-            Log.Error(err)
-            return nilObjectID, err
+            return err
         }
     }
     // Update media which item references.
@@ -93,24 +86,23 @@ func insertItem(it item.Item) (objectid.ObjectID, error) {
             bson.EC.Array("$in", bArray)))
         update := bson.NewDocument(
             bson.EC.SubDocumentFromElements("$addToSet",
-            bson.EC.ObjectID("item_ids", oid)))
+            bson.EC.ObjectID("item_ids", it.ID)))
             dbStart :=time.Now()
             result, err = col.UpdateMany(context.Background(), filter, update)
 
             elapsed := time.Since(dbStart)
             Log.WithFields(logrus.Fields{"endpoint": "addItem", "timeElapsed":elapsed.String()}).Info("update media time elapsed")
         if err != nil {
-            Log.Error(err)
-            return nilObjectID, err
+            return err
         } else if result.ModifiedCount != 1 {
             err = errors.New("Media item_ids not updated. Probably invalid ids.")
             Log.Error(err)
-            return nilObjectID, err
+            return err
         }
     }
     elapsed = time.Since(start)
-    Log.Info("AddItem elapsed: " + elapsed.String())
-    return oid, nil
+    //Log.Info("AddItem elapsed: " + elapsed.String())
+    return nil
 }
 
 func decodeRequest(r *http.Request) (request, error) {
@@ -128,10 +120,12 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
     Log.SetLevel(logrus.InfoLevel)
     var res response
     username, err := checkLogin(r)
+    start := time.Now()
     if err != nil {
-      Log.Error("User not logged in")
+        Log.Error("User not logged in")
         res.Status = "error"
         res.Error = "User not logged in."
+        encodeResponse(w, res)
         return
     }
     req, err := decodeRequest(r)
@@ -139,6 +133,7 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
         Log.Error("JSON decoding error")
         res.Status = "error"
         res.Error = "JSON decoding error."
+        encodeResponse(w, res)
         return
     }
     pOID, mOIDs, err := validateRequest(req)
@@ -156,26 +151,47 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
             it.MediaIDs = mOIDs
         }
         it.Username = username
-        res = addItemEndpoint(it)
+        var res response
+        logrus.Debug(it)
+        // Add the Item.
+        oid := objectid.New()
+        Log.Debug(oid)
+        it.ID = oid
+        res.Status = "OK"
+        res.ID = oid.Hex()
+        elapsed := time.Since(start)
+    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Info("pre-insert")
+        encodeResponse(w, res) // Cheat
+        err := insertItem(it)
+        elapsed = time.Since(start)
+    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Info("post-insert")
+        if err != nil {
+            Log.Error(err)
+            encodeResponse(w, res)
+            return
+        }
     } else {
         res.Status = "error"
         res.Error = err.Error()
+        encodeResponse(w, res)
     }
-    encodeResponse(w, res)
 }
 
 func addItemEndpoint(it item.Item) response {
     var res response
     logrus.Debug(it)
     // Add the Item.
-    id, err := insertItem(it)
+    oid := objectid.New()
+    Log.Debug(oid)
+    it.ID = oid
+    err := insertItem(it)
     if err != nil {
         Log.Error("Item could not be inserted into database.")
         res.Status = "error"
         res.Error = err.Error()
     } else {
         res.Status = "OK"
-        res.ID = id.Hex()
+        res.ID = oid.Hex()
     }
     return res
 }
