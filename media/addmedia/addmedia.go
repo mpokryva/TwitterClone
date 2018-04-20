@@ -76,46 +76,32 @@ func AddMediaHandler(w http.ResponseWriter, r *http.Request) {
     }
     m.Content = buf
     m.Username = username
-    res = addMediaEndpoint(m)
-
-    elapsed := time.Since(start)
-    Log.Info("Add Media elapsed: " + elapsed.String())
-    encodeResponse(w, res)
-}
-
-func addMediaEndpoint(m media.Media) response {
-    var res response
     // Add the Media.
-    oid, err := insertMedia(m)
+    oid := objectid.New()
+    m.ID = oid
+    elapsed := time.Since(start)
+    Log.Info("Add Media (pre-insert) elapsed: " + elapsed.String())
+    res.Status = "OK"
+    res.ID = oid.Hex()
+    encodeResponse(w, res)
+    err = insertMedia(m)
     if err != nil {
-        Log.Error(err)
-        res.Status = "error"
-        res.Error = err.Error()
-    } else {
-        res.Status = "OK"
-        res.ID = oid.Hex()
+       Log.Error(err.Error())
     }
-    return res
+    elapsed = time.Since(start)
+    Log.Info("Add Media (post-insert) elapsed: " + elapsed.String())
 }
 
-func insertMedia(m media.Media) (objectid.ObjectID, error) {
-    var nilObjectID objectid.ObjectID
+func insertMedia(m media.Media) (error) {
     start := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
-        return nilObjectID, err
+        return err
     }
     db := client.Database("twitter")
     col := db.Collection("media")
-    id := objectid.New()
-    m.ID = id
     _, err = col.InsertOne(context.Background(), &m)
     elapsed := time.Since(start)
     Log.Info("Insert media time elapsed: " + elapsed.String())
-    if err != nil {
-        Log.Error(err.Error())
-        return nilObjectID, err
-    } else {
-        return id, nil
-    }
+    return err
 }

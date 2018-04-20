@@ -38,7 +38,7 @@ func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     elapsed := time.Since(start)
-    Log.Info("AddItem elapsed: " + elapsed.String())
+    Log.WithFields(logrus.Fields{"timeElapsed":elapsed.String()}).Info("Get Media time elapsed")
     encodeResponse(w, media)
 }
 
@@ -55,7 +55,7 @@ func getMedia(oid objectid.ObjectID) (media.Media, error) {
     filter := bson.NewDocument(bson.EC.ObjectID("_id", oid))
     err = coll.FindOne(context.Background(), filter).Decode(&media)
     elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"timeElapsed":elapsed.String()}).Info("Get Media time elapsed")
+    //Log.WithFields(logrus.Fields{"timeElapsed":elapsed.String()}).Info("Get Media time elapsed")
     return media, err
 }
 
