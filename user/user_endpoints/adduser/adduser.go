@@ -140,7 +140,7 @@ func insertUserAndSendEmail(username string, email string, password string) (str
         return "", err
     }
     // Email user once inserted into db.
-    err = sendEmail(username, key)
+    err = sendEmail(email, key)
     if err != nil {
         Log.Error(err)
         return "", err
