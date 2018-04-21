@@ -8,8 +8,12 @@ import (
     "github.com/sirupsen/logrus"
 )
 
-type response struct {
+type GetResponse struct {
     Value []byte `json:"value,omitempty"`
+    Error string `json:"error,omitempty"`
+}
+
+type SetResponse struct {
     Error string `json:"error,omitempty"`
 }
 
@@ -29,10 +33,10 @@ func GetSingleHandler(w http.ResponseWriter, r *http.Request) {
     item, err := mc.Get(key)
     if err != nil {
         Log.Error(err)
-        sendError(w, err)
+        sendGetError(w, err)
     } else {
         Log.Debug(item.Value)
-        var res response
+        var res GetResponse
         res.Value = item.Value
         encodeResponse(w, res)
     }
@@ -43,13 +47,13 @@ func SetHandler(w http.ResponseWriter, r *http.Request) {
     item, err := decodeRequest(r)
     if err != nil {
         Log.Error(err)
-        sendError(w, err)
+        sendSetError(w, err)
         return
     }
     err = mc.Set(&item)
     if err != nil {
         Log.Error(err)
-        sendError(w, err)
+        sendSetError(w, err)
     }
 }
 
@@ -66,11 +70,21 @@ func decodeRequest(r *http.Request) (memcache.Item, error) {
     return item, nil
 }
 
-func sendError(w http.ResponseWriter, err error) {
-    var res response
+func sendSetError(w http.ResponseWriter, err error) {
+    var res SetResponse
     res.Error = err.Error()
+    sendError(w, res)
+}
+
+func sendError(w http.ResponseWriter, response interface{}) {
     w.WriteHeader(http.StatusInternalServerError)
-    encodeResponse(w, res)
+    encodeResponse(w, response)
+}
+
+func sendGetError(w http.ResponseWriter, err error) {
+    var res GetResponse
+    res.Error = err.Error()
+    sendError(w, res)
 }
 
 func encodeResponse(w http.ResponseWriter, response interface{}) error {

@@ -10,12 +10,17 @@ import (
     log "github.com/sirupsen/logrus"
     "gopkg.in/sohlich/elogrus.v3"
     "github.com/olivere/elastic"
+    "encoding/json"
+    //"encoding/base64"
+    "TwitterClone/memcached"
+    "net/http"
 )
 
 
 func main() {
     log.AddHook(filehook.NewHook())
 }
+
 var client *mongo.Client
 
 func NewClient() (*mongo.Client, error) {
@@ -32,7 +37,22 @@ func NewClient() (*mongo.Client, error) {
             log.Error(err)
         }
         return client, err
+}
+
+func GetMemcached(key string) ([]byte, error) {
+    // TODO: Change this to proper ip address.
+    resp, err := http.Get("http://localhost/memcached/" + key)
+    if err != nil {
+        return nil, err
     }
+    defer resp.Body.Close()
+    var getRes memcached.GetResponse
+    err = json.NewDecoder(resp.Body).Decode(&getRes)
+    if err != nil {
+        return nil, err
+    }
+    return getRes.Value, nil
+}
 
 func FileElasticLogger (filename string, flag int,
     perm os.FileMode)(*log.Logger, *os.File, error) {
