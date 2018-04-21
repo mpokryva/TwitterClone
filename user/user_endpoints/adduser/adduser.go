@@ -34,15 +34,12 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
     return json.NewEncoder(w).Encode(response)
 }
 
-func insertUser(username string, email string, password string) (string, error) {
+func checkUserExists(username string, email string) (error) {
     dbStart := time.Now()
-    var user user.User
-    user.Username = username
-    user.Email = email
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
-        return "", err
+        return err
     }
     db := client.Database("twitter")
     coll := db.Collection("emails")
@@ -55,7 +52,7 @@ func insertUser(username string, email string, password string) (string, error) 
     if err == nil { // Email exists.
         err = errors.New("The email " + email + " is already in use.")
         Log.Error(err)
-        return "", err
+        return err
     }
     // If error is not nil, this probably means it wasn't found.
     // However, it's possible it's an actual error, so it's being logged.
@@ -73,13 +70,27 @@ func insertUser(username string, email string, password string) (string, error) 
     if err == nil { // Username exists.
         err = errors.New("The username " + username + " is already in use.")
         Log.Error(err)
-        return "", err
+        return err
     }
     // If error is not nil, this probably means it wasn't found.
     // However, it's possible it's an actual error, so it's being logged.
     Log.WithFields(logrus.Fields{"endpoint":"adduser", "msg": "username FindOne error",
         "error": err.Error()}).Debug()
+    return nil
+}
+
+func insertUserAndSendEmail(username string, email string, password string) (string, error) {
+    dbStart := time.Now()
+    client, err := wrappers.NewClient()
+    if err != nil {
+        Log.Error(err)
+        return "", err
+    }
+    db := client.Database("twitter")
     hashedPassword := md5.Sum([]byte(password))
+    var user user.User
+    user.Username = username
+    user.Email = email
     user.Password = hashedPassword[:]
     user.Verified = false
     oid := objectid.New()
@@ -93,18 +104,20 @@ func insertUser(username string, email string, password string) (string, error) 
     hasher.Write([]byte(user.Username))
     hasher.Write([]byte(numstring))
     key := hex.EncodeToString(hasher.Sum(nil))
-    user.Key = "<" + key + ">"
+    key = "<" + key + ">"
+    user.Key = key
     dbStart = time.Now()
     // Update users collection.
     Log.Debug(user)
-    coll = db.Collection("users")
+    coll := db.Collection("users")
     _, err = coll.InsertOne(context.Background(), &user)
-    elapsed = time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint": "adduser","msg":"insert a user time elapsed",
-        "timeElapsed":elapsed.String()}).Info()
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint": "adduser",
+            "msg":"insert a user time elapsed",
+            "timeElapsed":elapsed.String()}).Info()
     if err != nil {
         Log.Error(err)
-        return "", nil
+        return "", err
     }
     // Update usernames collection.
     coll = db.Collection("usernames")
@@ -114,7 +127,7 @@ func insertUser(username string, email string, password string) (string, error) 
     _, err = coll.InsertOne(context.Background(), doc)
     if err != nil {
         Log.Error(err)
-        return "", nil
+        return "", err
     }
     // Update emails collection.
     coll = db.Collection("emails")
@@ -124,8 +137,15 @@ func insertUser(username string, email string, password string) (string, error) 
     _, err = coll.InsertOne(context.Background(), doc)
     if err != nil {
         Log.Error(err)
+        return "", err
     }
-    return user.Key, err
+    // Email user once inserted into db.
+    err = sendEmail(username, key)
+    if err != nil {
+        Log.Error(err)
+        return "", err
+    }
+    return key, nil
 }
 
 func sendError(w http.ResponseWriter, err error) {
@@ -151,8 +171,9 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
         return
     }
     // Add the user.
-    key, err := insertUser(*us.Username, *us.Email, *us.Password)
+    err = checkUserExists(*us.Username, *us.Email)
     if err != nil {
+        Log.Error(err)
         sendError(w, err)
         return
     }
@@ -161,14 +182,11 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     elapsed := time.Since(start)
     Log.Info("Add User elapsed: " + elapsed.String())
     encodeResponse(w, res)
-    // Email user once inserted into db.
-    err = email(*us.Email, key)
-    if err != nil {
-        Log.Error(err)
-    }
+    // No error. Add user to db and send email.
+    go insertUserAndSendEmail(*us.Username, *us.Email, *us.Password)
 }
 
-func email(email string, key string) error {
+func sendEmail(email string, key string) error {
     link := "http://nsamba.cse356.compas.cs.stonybrook.edu/verify?email="+email+"&key="+key
     msg := []byte("To: "+email+"\r\n" +
     "Subject: Validation Email\r\n" +
