@@ -160,21 +160,25 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
         res.Status = "OK"
         res.ID = oid.Hex()
         elapsed := time.Since(start)
-    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Info("pre-insert")
+        Log.WithFields(logrus.Fields{"endpoint": "additem",
+            "timeElapsed":elapsed.String()}).Info("pre-insert")
         encodeResponse(w, res) // Cheat
-        err := insertItem(it)
-        elapsed = time.Since(start)
-    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Info("post-insert")
-        if err != nil {
-            Log.Error(err)
-            encodeResponse(w, res)
-            return
-        }
+        go insertWithTimer(it, start)
     } else {
         res.Status = "error"
         res.Error = err.Error()
         encodeResponse(w, res)
     }
+}
+
+func insertWithTimer(it item.Item, start time.Time) {
+    err := insertItem(it)
+    if err != nil {
+        Log.Error(err)
+    }
+    elapsed := time.Since(start)
+    Log.WithFields(logrus.Fields{"endpoint": "additem",
+        "timeElapsed":elapsed.String()}).Info("post-insert")
 }
 
 func addItemEndpoint(it item.Item) response {

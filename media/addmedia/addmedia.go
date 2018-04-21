@@ -84,11 +84,17 @@ func AddMediaHandler(w http.ResponseWriter, r *http.Request) {
     res.Status = "OK"
     res.ID = oid.Hex()
     encodeResponse(w, res)
-    err = insertMedia(m)
+    elapsed = time.Since(start)
+    Log.Info("Add Media (post-response) elapsed: " + elapsed.String())
+    go insertWithTimer(m, start)
+}
+
+func insertWithTimer(m media.Media, start time.Time) {
+    err := insertMedia(m)
     if err != nil {
        Log.Error(err.Error())
     }
-    elapsed = time.Since(start)
+    elapsed := time.Since(start)
     Log.Info("Add Media (post-insert) elapsed: " + elapsed.String())
 }
 
