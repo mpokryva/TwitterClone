@@ -79,12 +79,12 @@ func checkUserExists(username string, email string) (error) {
     return nil
 }
 
-func insertUser(username string, email string, password string) (string, error) {
+func insertUser(username string, email string, password string, key string) (error) {
     dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
-        return "", err
+        return err
     }
     db := client.Database("twitter")
     hashedPassword := md5.Sum([]byte(password))
@@ -96,15 +96,6 @@ func insertUser(username string, email string, password string) (string, error) 
     oid := objectid.New()
     user.ID = oid
     Log.Debug(oid)
-    // Create the hashed verification key.
-    num := rand.Int()
-    numstring := strconv.Itoa(num)
-    Log.Println(num, numstring)
-    hasher := md5.New()
-    hasher.Write([]byte(user.Username))
-    hasher.Write([]byte(numstring))
-    key := hex.EncodeToString(hasher.Sum(nil))
-    key = "<" + key + ">"
     user.Key = key
     dbStart = time.Now()
     // Update users collection.
@@ -117,7 +108,7 @@ func insertUser(username string, email string, password string) (string, error) 
             "timeElapsed":elapsed.String()}).Info()
     if err != nil {
         Log.Error(err)
-        return "", err
+        return err
     }
     // Update usernames collection.
     coll = db.Collection("usernames")
@@ -127,7 +118,7 @@ func insertUser(username string, email string, password string) (string, error) 
     _, err = coll.InsertOne(context.Background(), doc)
     if err != nil {
         Log.Error(err)
-        return "", err
+        return err
     }
     // Update emails collection.
     coll = db.Collection("emails")
@@ -137,9 +128,9 @@ func insertUser(username string, email string, password string) (string, error) 
     _, err = coll.InsertOne(context.Background(), doc)
     if err != nil {
         Log.Error(err)
-        return "", err
+        return err
     } else {
-        return key, nil
+        return nil
     }
 }
 
@@ -165,6 +156,17 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
         sendError(w, err)
         return
     }
+    // Email user once inserted into db.
+    // Create the hashed verification key.
+    num := rand.Int()
+    numstring := strconv.Itoa(num)
+    Log.Debug(num, numstring)
+    hasher := md5.New()
+    hasher.Write([]byte(*us.Username))
+    hasher.Write([]byte(numstring))
+    key := hex.EncodeToString(hasher.Sum(nil))
+    key = "<" + key + ">"
+    go sendEmail(*us.Username, key) // Send email (async).
     // Add the user.
     err = checkUserExists(*us.Username, *us.Email)
     if err != nil {
@@ -175,7 +177,7 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     elapsed := time.Since(start)
     Log.Info("Add User elapsed: " + elapsed.String())
     // No error. Add user to db and send email.
-    key, err := insertUser(*us.Username, *us.Email, *us.Password)
+    err = insertUser(*us.Username, *us.Email, *us.Password, key)
     if err != nil {
         Log.Error(err)
         sendError(w, err)
@@ -184,8 +186,6 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     var res response
     res.Status = "OK"
     encodeResponse(w, res)
-    // Email user once inserted into db.
-    go sendEmail(username, key)
 }
 
 func sendEmail(email string, key string) error {
