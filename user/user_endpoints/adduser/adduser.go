@@ -166,7 +166,7 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     hasher.Write([]byte(numstring))
     key := hex.EncodeToString(hasher.Sum(nil))
     key = "<" + key + ">"
-    go sendEmail(*us.Username, key) // Send email (async).
+    go sendEmail(*us.Email, key) // Send email (async).
     // Add the user.
     err = checkUserExists(*us.Username, *us.Email)
     if err != nil {
