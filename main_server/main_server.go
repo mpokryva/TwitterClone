@@ -17,6 +17,7 @@ import (
     "TwitterClone/verify"
     "TwitterClone/login"
     "TwitterClone/logout"
+    "TwitterClone/memcached"
 )
 
 var Log *logrus.Logger
@@ -53,4 +54,5 @@ func injectLogger() {
     verify.Log = Log
     login.Log = Log
     logout.Log = Log
+    memcached.Log = Log
 }

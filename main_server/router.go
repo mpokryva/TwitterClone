@@ -15,6 +15,7 @@ import (
     "TwitterClone/verify"
     "TwitterClone/login"
     "TwitterClone/logout"
+    "TwitterClone/memcached"
 )
 
 type Route struct {
@@ -100,7 +101,16 @@ var routes = []Route{
         "GET",
         "/media/{id}",
         media_endpoints.GetMediaHandler},
-
+    Route {
+        "GetSingleMemcached",
+        "GET",
+        "/memcached/{key}",
+        memcached.GetSingleHandler},
+    Route {
+        "SetMemcached",
+        "POST",
+        "/memcached",
+        memcached.SetHandler},
 }
 func NewRouter() *mux.Router {
     router := mux.NewRouter()
