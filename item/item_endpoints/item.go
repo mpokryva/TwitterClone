@@ -37,9 +37,6 @@ type Req struct {
     Like *bool `json:"like"`
 }
 var Log *logrus.Logger
-func main() {
-    Log.SetLevel(logrus.ErrorLevel)
-}
 
 
 //LIKE ITEM FUNCTIONS START HERE
@@ -219,18 +216,32 @@ func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) e
 
 //GET ITEM FUNCTIONS START HERE
 func GetItemHandler(w http.ResponseWriter, r *http.Request) {
+    Log.SetLevel(logrus.InfoLevel)
     var res response
     id := mux.Vars(r)["id"]
     Log.Debug(id)
-    res = getItemEndpoint(id)
+    var item item.Item
+    start := time.Now()
+    err := wrappers.GetMemcached(cacheKey(id), &item)
+    elapsed := time.Since(start)
+    Log.WithFields(logrus.Fields{"endpoint":"item",
+        "timeElapsed":elapsed.String()}).Info("Get item from memcached")
+    if err != nil {
+        Log.Debug(err)
+        res = getItemFromMongo(id)
+    } else {
+        Log.Debug("Cache hit")
+        res.Status = "OK"
+        res.Item = item
+    }
     encodeResponse(w, res)
 }
 
-func getItemEndpoint(id string) response {
-    return getItem(id)
+func cacheKey(id string) string {
+    return "item_" + id
 }
 
-func getItem(id string) response {
+func getItemFromMongo(id string) response {
     var item item.Item
     var resp response
     dbStart := time.Now()
@@ -256,9 +267,9 @@ func getItem(id string) response {
     err = col.FindOne(
         context.Background(),
         filter).Decode(&item)
-
-        elapsed := time.Since(dbStart)
-        Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Get item time elapsed")
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint":"item",
+        "timeElapsed":elapsed.String()}).Info("Get item from Mongo")
     if err != nil {
         Log.Error(err)
         resp.Status = "error"
@@ -267,6 +278,13 @@ func getItem(id string) response {
     }
     resp.Status = "OK"
     resp.Item = item
+    // Set in cache
+    setRes, err := wrappers.SetMemcached(cacheKey(id), &item)
+    if err != nil {
+        Log.Error(err)
+    } else if setRes.Error != "" {
+        Log.Error(setRes.Error)
+    }
     return resp
 }
 //GET ITEM FUNCTIONS END HERE

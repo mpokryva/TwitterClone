@@ -11,9 +11,10 @@ import (
     "gopkg.in/sohlich/elogrus.v3"
     "github.com/olivere/elastic"
     "encoding/json"
-    //"encoding/base64"
     "TwitterClone/memcached"
+    "TwitterClone/item"
     "net/http"
+    "bytes"
 )
 
 
@@ -21,37 +22,69 @@ func main() {
     log.AddHook(filehook.NewHook())
 }
 
-var client *mongo.Client
+var mongoClient *mongo.Client
+var Log *log.Logger
 
 func NewClient() (*mongo.Client, error) {
-    if client != nil {
-        return client, nil
+    if mongoClient != nil {
+        return mongoClient, nil
     }
     var err error
     var ClientOpt = &mongo.ClientOptions{}
     opts := ClientOpt.
     MaxConnIdleTime(time.Second * 30)
-    client, err = mongo.NewClientWithOptions(
+    mongoClient, err = mongo.NewClientWithOptions(
         "mongodb://mongo-query-router:27017", opts)
         if err != nil {
             log.Error(err)
         }
-        return client, err
+        return mongoClient, err
 }
 
-func GetMemcached(key string) ([]byte, error) {
+
+func GetMemcached(key string, v interface{}) error {
     // TODO: Change this to proper ip address.
     resp, err := http.Get("http://localhost/memcached/" + key)
     if err != nil {
-        return nil, err
+        return err
     }
     defer resp.Body.Close()
     var getRes memcached.GetResponse
     err = json.NewDecoder(resp.Body).Decode(&getRes)
     if err != nil {
-        return nil, err
+        return err
     }
-    return getRes.Value, nil
+    err = json.Unmarshal(getRes.Value, v)
+    return err
+}
+
+func SetMemcached(key string, v interface{}) (memcached.SetResponse, error) {
+    var setRes memcached.SetResponse
+    b, err := json.Marshal(v)
+    Log.Debug(b)
+    var item item.Item
+    err = json.Unmarshal(b, &item)
+    Log.Debug(item)
+    if err != nil {
+        return setRes, err
+    }
+    var setReq memcached.SetRequest
+    setReq.Key = key
+    setReq.Value = b
+    b, err = json.Marshal(&setReq)
+    if err != nil {
+        return setRes, err
+    }
+    reqBuf := bytes.NewBuffer(b)
+    Log.Debug(reqBuf)
+    // TODO: change this to proper ip address.
+    resp, err := http.Post("http://localhost/memcached", "application/json", reqBuf)
+    if err != nil {
+        return setRes, err
+    }
+    defer resp.Body.Close()
+    err = json.NewDecoder(resp.Body).Decode(&setRes)
+    return setRes, err
 }
 
 func FileElasticLogger (filename string, flag int,

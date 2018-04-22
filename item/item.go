@@ -54,3 +54,23 @@ func (it Item) MarshalJSON() ([]byte, error) {
     inIt.ChildType = it.ChildType
     return json.Marshal(inIt)
 }
+
+func (item *Item) UnmarshalJSON(b []byte) error {
+    var inIt internalItem
+    err := json.Unmarshal(b, &inIt)
+    if err != nil {
+        return err
+    }
+    oid, err := objectid.FromHex(inIt.ID)
+    if err != nil {
+        return err
+    }
+    item.ID = oid
+    item.Username = inIt.Username
+    item.Property = inIt.Property
+    item.Retweeted = inIt.Retweeted
+    item.Content = inIt.Content
+    item.Timestamp = inIt.Timestamp
+    item.ChildType = inIt.ChildType
+    return nil
+}

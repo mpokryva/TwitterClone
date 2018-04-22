@@ -55,4 +55,5 @@ func injectLogger() {
     login.Log = Log
     logout.Log = Log
     memcached.Log = Log
+    wrappers.Log = Log
 }
