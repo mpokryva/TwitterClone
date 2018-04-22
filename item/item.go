@@ -34,6 +34,11 @@ type Property struct {
     Likes int `json:"likes" bson:"likes"`
 }
 
+
+func CacheKey(id string) string {
+    return "item_" + id
+}
+
 func (it Item) MarshalJSON() ([]byte, error) {
     var inIt internalItem
     var nilObjectID objectid.ObjectID
