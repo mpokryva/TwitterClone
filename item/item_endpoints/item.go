@@ -220,9 +220,9 @@ func GetItemHandler(w http.ResponseWriter, r *http.Request) {
     var res response
     id := mux.Vars(r)["id"]
     Log.Debug(id)
-    var item item.Item
+    var it item.Item
     start := time.Now()
-    err := wrappers.GetMemcached(cacheKey(id), &item)
+    err := wrappers.GetMemcached(item.CacheKey(id), &it)
     elapsed := time.Since(start)
     Log.WithFields(logrus.Fields{"endpoint":"item",
         "timeElapsed":elapsed.String()}).Info("Get item from memcached")
@@ -232,17 +232,13 @@ func GetItemHandler(w http.ResponseWriter, r *http.Request) {
     } else {
         Log.Debug("Cache hit")
         res.Status = "OK"
-        res.Item = item
+        res.Item = it
     }
     encodeResponse(w, res)
 }
 
-func cacheKey(id string) string {
-    return "item_" + id
-}
-
 func getItemFromMongo(id string) response {
-    var item item.Item
+    var it item.Item
     var resp response
     dbStart := time.Now()
     client, err := wrappers.NewClient()
@@ -266,7 +262,7 @@ func getItemFromMongo(id string) response {
     filter := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
     err = col.FindOne(
         context.Background(),
-        filter).Decode(&item)
+        filter).Decode(&it)
     elapsed := time.Since(dbStart)
     Log.WithFields(logrus.Fields{"endpoint":"item",
         "timeElapsed":elapsed.String()}).Info("Get item from Mongo")
@@ -277,9 +273,9 @@ func getItemFromMongo(id string) response {
         return resp
     }
     resp.Status = "OK"
-    resp.Item = item
+    resp.Item = it
     // Set in cache
-    setRes, err := wrappers.SetMemcached(cacheKey(id), &item)
+    setRes, err := wrappers.SetMemcached(item.CacheKey(id), &it)
     if err != nil {
         Log.Error(err)
     } else if setRes.Error != "" {
