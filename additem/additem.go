@@ -117,7 +117,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func AddItemHandler(w http.ResponseWriter, r *http.Request) {
-    Log.SetLevel(logrus.InfoLevel)
+    Log.SetLevel(logrus.DebugLevel)
     var res response
     username, err := checkLogin(r)
     start := time.Now()
@@ -175,6 +175,15 @@ func insertWithTimer(it item.Item, start time.Time) {
     err := insertItem(it)
     if err != nil {
         Log.Error(err)
+    } else {
+        // Cache inserted item.
+        Log.Debug("Caching item")
+        setRes, err := wrappers.SetMemcached(item.CacheKey(it.ID.Hex()), &it)
+        if err != nil {
+            Log.Error(err)
+        } else if setRes.Error != "" {
+            Log.Error(setRes.Error)
+        }
     }
     elapsed := time.Since(start)
     Log.WithFields(logrus.Fields{"endpoint": "additem",
