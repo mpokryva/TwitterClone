@@ -42,7 +42,7 @@ func GetMemcached(key string, v interface{}) error {
     start := time.Now()
     resp, err := http.Get("http://127.0.0.1/memcached/" + key)
     elapsed := time.Since(start)
-    Log.Error("Memcache GET elapsed: " + elapsed.String())
+    Log.Error("Memcache GET " + key + " elapsed: " + elapsed.String())
     if err != nil {
         return err
     }

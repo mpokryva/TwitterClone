@@ -1,6 +1,7 @@
 package memcached
 
 import (
+    "time"
     "net/http"
     "encoding/json"
     "github.com/bradfitz/gomemcache/memcache"
@@ -35,7 +36,10 @@ func GetSingleHandler(w http.ResponseWriter, r *http.Request) {
     vars := mux.Vars(r)
     key := vars["key"]
     Log.Debug(key)
+    start := time.Now()
     item, err := mc.Get(key)
+    elapsed := time.Since(start)
+    Log.Info("Memcached lib elapsed: " + elapsed.String())
     if err != nil {
         Log.Error(err)
         sendGetError(w, err, http.StatusNotFound)
