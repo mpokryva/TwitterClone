@@ -12,7 +12,6 @@ import (
     "github.com/olivere/elastic"
     "encoding/json"
     "TwitterClone/memcached"
-    "TwitterClone/item"
     "net/http"
     "bytes"
 )
@@ -61,13 +60,10 @@ func GetMemcached(key string, v interface{}) error {
 func SetMemcached(key string, v interface{}) (memcached.SetResponse, error) {
     var setRes memcached.SetResponse
     b, err := json.Marshal(v)
-    Log.Debug(b)
-    var item item.Item
-    err = json.Unmarshal(b, &item)
-    Log.Debug(item)
     if err != nil {
         return setRes, err
     }
+    Log.Debug(b)
     var setReq memcached.SetRequest
     setReq.Key = key
     setReq.Value = b
