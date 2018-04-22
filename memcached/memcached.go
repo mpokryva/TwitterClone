@@ -25,12 +25,6 @@ type SetRequest struct {
 
 var Log *logrus.Logger
 var mc *memcache.Client
-func MemcachedClient() *memcache.Client {
-    if mc == nil {
-        mc = memcache.New("memcached-1:11211")
-    }
-    return mc
-}
 
 func init() {
     mc = memcache.New("memcached-1:11211")
