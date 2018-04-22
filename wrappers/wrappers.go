@@ -16,11 +16,6 @@ import (
     "bytes"
 )
 
-
-func main() {
-    log.AddHook(filehook.NewHook())
-}
-
 var mongoClient *mongo.Client
 var Log *log.Logger
 
@@ -42,8 +37,12 @@ func NewClient() (*mongo.Client, error) {
 
 
 func GetMemcached(key string, v interface{}) error {
+    Log.SetLevel(log.DebugLevel)
     // TODO: Change this to proper ip address.
-    resp, err := http.Get("http://localhost/memcached/" + key)
+    start := time.Now()
+    resp, err := http.Get("http://127.0.0.1/memcached/" + key)
+    elapsed := time.Since(start)
+    Log.Error("Memcache GET elapsed: " + elapsed.String())
     if err != nil {
         return err
     }
@@ -74,7 +73,7 @@ func SetMemcached(key string, v interface{}) (memcached.SetResponse, error) {
     reqBuf := bytes.NewBuffer(b)
     Log.Debug(reqBuf)
     // TODO: change this to proper ip address.
-    resp, err := http.Post("http://localhost/memcached", "application/json", reqBuf)
+    resp, err := http.Post("http://127.0.0.1/memcached", "application/json", reqBuf)
     if err != nil {
         return setRes, err
     }
