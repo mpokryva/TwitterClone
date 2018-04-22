@@ -189,6 +189,7 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
 func sendEmail(email string, key string) error {
     link := "http://nsamba.cse356.compas.cs.stonybrook.edu/verify?email="+email+"&key="+key
     msg := []byte("To: "+email+"\r\n" +
+    "From:  mongo-config@cloud.compas.cs.stonybrook.edu" + "\r\n" +
     "Subject: Validation Email\r\n" +
     "\r\n" +
     "Thank you for joining Twiti!\n This is your validation key: " + key + "\n Please click the link to quickly veify your account: "+ link+"\r\n")
