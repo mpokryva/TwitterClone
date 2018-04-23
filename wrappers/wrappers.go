@@ -35,12 +35,12 @@ func NewClient() (*mongo.Client, error) {
         return mongoClient, err
 }
 
-
 func GetMemcached(key string, v interface{}) error {
     Log.SetLevel(log.DebugLevel)
     // TODO: Change this to proper ip address.
     start := time.Now()
-    resp, err := http.Get("http://127.0.0.1/memcached/" + key)
+    loadBalancerIP = "192.168.1.11"
+    resp, err := http.Get("http://" + loadBalancerIP + "/memcached/" + key)
     elapsed := time.Since(start)
     Log.Error("Memcache GET " + key + " elapsed: " + elapsed.String())
     if err != nil {
