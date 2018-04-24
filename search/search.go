@@ -9,7 +9,6 @@ import (
     "encoding/json"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/mongo"
-    "TwitterClone/user"
     "github.com/mongodb/mongo-go-driver/bson"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "TwitterClone/wrappers"
@@ -117,14 +116,19 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
 func getFollowingList(username string, db mongo.Database) ([]string){
   filter := bson.NewDocument(bson.EC.String("username",username))
   c := db.Collection("users")
-  var foundUser user.User
-  err := c.FindOne(context.Background(), filter).Decode(&foundUser)
+  proj := bson.NewDocument(bson.EC.Int32("following",1), bson.EC.Int32("_id",0))
+  var fArray []string
+  option, err := mongo.Opt.Projection(proj)
+  if err != nil {
+      return nil
+  }
+  err = c.FindOne(context.Background(),filter,option).Decode(&fArray)
   if err != nil{
     Log.Error("Could not find user in DB")
     return nil
   }
-  Log.Info(foundUser)
-  return foundUser.Following
+  Log.Info(fArray)
+  return fArray
 
 }
 

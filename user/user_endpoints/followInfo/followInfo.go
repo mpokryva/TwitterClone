@@ -10,7 +10,7 @@ import (
     "time"
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
-    "TwitterClone/user"
+	  "github.com/mongodb/mongo-go-driver/mongo"
 )
 
 type params struct {
@@ -110,74 +110,60 @@ start := time.Now()
 }
 
 func findUserFollowing(username string, p params) ([]string, error) {
-    user,err := findUser(username)
+    following,err := findUserFollow(username,"following")
     list := []string{}
     if err != nil{
       Log.Error(err)
       return nil,errors.New(err.Error())
     }
-    if user.Followers != nil{
-      return user.Followers, nil
+    if following != nil{
+      return following, nil
     }else{
       return list, nil
     }
 }
 
 func findUserFollowers(username string, p params) ([]string, error) {
-    user,err := findUser(username)
+    followers,err := findUserFollow(username, "followers")
     list := []string{}
     if err != nil{
       Log.Error(err)
       return nil,errors.New(err.Error())
     }
-    if user.Followers != nil{
-      return user.Followers, nil
+
+    if followers != nil{
+      return followers,nil
     }else{
       return list, nil
     }
 }
 
-func createList(p params, res bson.Element) ([]string,error) {
-  var list []string
-  var limit uint
-  limit = 0
-  Log.Debug(res)
-  ra := res.Value().ReaderArray()
-  Log.Debug(ra)
-  for limit < (uint)(p.Limit) {
-    result,err := ra.ElementAt(limit)
-    if err != nil{
-      Log.Error(err)
-      return nil,errors.New(err.Error())
-    }
-    list = append(list,result.Value().StringValue())
-    limit += 1
-  }
-
-  return list,nil
-}
-
-func findUser(username string) (user.User,error){
+func findUserFollow(username string, follow string) ([]string,error){
   dbStart := time.Now()
-  var foundUser user.User
   client, err := wrappers.NewClient()
   if err != nil {
-      return foundUser,err
+      return nil,err
   }
   db := client.Database("twitter")
   coll := db.Collection("users")
   filter := bson.NewDocument(bson.EC.String("username", username))
+  proj := bson.NewDocument(bson.EC.Int32(follow,1), bson.EC.Int32("_id",0))
 
+  var fArray []string
+  option, err := mongo.Opt.Projection(proj)
+  if err != nil {
+      return nil,err
+  }
   err = coll.FindOne(context.Background(),
-      filter).Decode(&foundUser)
-  Log.Debug(foundUser)
+      filter,option).Decode(&fArray)
+  Log.Debug(fArray)
   if err != nil{
     elapsed := time.Since(dbStart)
     Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Error("Could not find user")
-    return foundUser,errors.New("Could not find user")
+    return fArray,errors.New("Could not find user")
   }
 
   elapsed := time.Since(dbStart)
   Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Info()
-  return foundUser,nil
+  return fArray,nil
 }
