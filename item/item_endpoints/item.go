@@ -13,6 +13,7 @@ import (
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "TwitterClone/wrappers"
     "TwitterClone/item"
+    "TwitterClone/memcached"
 )
 
 type Like struct {
@@ -222,7 +223,7 @@ func GetItemHandler(w http.ResponseWriter, r *http.Request) {
     Log.Debug(id)
     var it item.Item
     start := time.Now()
-    err := wrappers.GetMemcached(item.CacheKey(id), &it)
+    err := memcached.Get(item.CacheKey(id), &it)
     elapsed := time.Since(start)
     Log.WithFields(logrus.Fields{"endpoint":"item",
         "timeElapsed":elapsed.String()}).Info("Get item from memcached")
@@ -275,11 +276,9 @@ func getItemFromMongo(id string) response {
     resp.Status = "OK"
     resp.Item = it
     // Set in cache
-    setRes, err := wrappers.SetMemcached(item.CacheKey(id), &it)
+    err = memcached.Set(item.CacheKey(id), &it)
     if err != nil {
         Log.Error(err)
-    } else if setRes.Error != "" {
-        Log.Error(setRes.Error)
     }
     return resp
 }

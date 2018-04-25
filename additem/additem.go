@@ -4,7 +4,6 @@ import (
     "context"
     "net/http"
     "time"
-
     "errors"
     "github.com/sirupsen/logrus"
     "encoding/json"
@@ -13,6 +12,7 @@ import (
     "github.com/mongodb/mongo-go-driver/mongo"
     "TwitterClone/wrappers"
     "TwitterClone/item"
+    "TwitterClone/memcached"
 )
 
 type request struct {
@@ -178,11 +178,9 @@ func insertWithTimer(it item.Item, start time.Time) {
     } else {
         // Cache inserted item.
         Log.Debug("Caching item")
-        setRes, err := wrappers.SetMemcached(item.CacheKey(it.ID.Hex()), &it)
+        err = memcached.Set(item.CacheKey(it.ID.Hex()), &it)
         if err != nil {
             Log.Error(err)
-        } else if setRes.Error != "" {
-            Log.Error(setRes.Error)
         }
     }
     elapsed := time.Since(start)

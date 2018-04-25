@@ -10,14 +10,18 @@ import (
     log "github.com/sirupsen/logrus"
     "gopkg.in/sohlich/elogrus.v3"
     "github.com/olivere/elastic"
-    "encoding/json"
-    "TwitterClone/memcached"
     "net/http"
-    "bytes"
 )
 
 var mongoClient *mongo.Client
 var Log *log.Logger
+var mcClient *http.Client
+
+func init() {
+    mcClient = &http.Client{
+        Timeout: time.Millisecond * 100, // 100ms timeout
+    }
+}
 
 func NewClient() (*mongo.Client, error) {
     if mongoClient != nil {
@@ -33,53 +37,6 @@ func NewClient() (*mongo.Client, error) {
             log.Error(err)
         }
         return mongoClient, err
-}
-
-func GetMemcached(key string, v interface{}) error {
-    Log.SetLevel(log.DebugLevel)
-    // TODO: Change this to proper ip address.
-    start := time.Now()
-    loadBalancerIP = "192.168.1.11"
-    resp, err := http.Get("http://" + loadBalancerIP + "/memcached/" + key)
-    elapsed := time.Since(start)
-    Log.Error("Memcache GET " + key + " elapsed: " + elapsed.String())
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
-    var getRes memcached.GetResponse
-    err = json.NewDecoder(resp.Body).Decode(&getRes)
-    if err != nil {
-        return err
-    }
-    err = json.Unmarshal(getRes.Value, v)
-    return err
-}
-
-func SetMemcached(key string, v interface{}) (memcached.SetResponse, error) {
-    var setRes memcached.SetResponse
-    b, err := json.Marshal(v)
-    if err != nil {
-        return setRes, err
-    }
-    Log.Debug(b)
-    var setReq memcached.SetRequest
-    setReq.Key = key
-    setReq.Value = b
-    b, err = json.Marshal(&setReq)
-    if err != nil {
-        return setRes, err
-    }
-    reqBuf := bytes.NewBuffer(b)
-    Log.Debug(reqBuf)
-    // TODO: change this to proper ip address.
-    resp, err := http.Post("http://127.0.0.1/memcached", "application/json", reqBuf)
-    if err != nil {
-        return setRes, err
-    }
-    defer resp.Body.Close()
-    err = json.NewDecoder(resp.Body).Decode(&setRes)
-    return setRes, err
 }
 
 func FileElasticLogger (filename string, flag int,
