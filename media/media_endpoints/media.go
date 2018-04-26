@@ -68,7 +68,7 @@ func getMediaFromMongo(oid objectid.ObjectID) (media.Media, error) {
         return nilMedia, err
     }
     err = coll.FindOne(context.Background(), filter, projection).Decode(&m)
-    if err == nil { // Cache
+    if err == nil && useCache { // Cache
         cacheErr := memcached.Set(media.CacheKey(oid.Hex()), &m)
         if cacheErr != nil {
             Log.Error(cacheErr)
