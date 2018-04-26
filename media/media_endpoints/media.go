@@ -17,7 +17,7 @@ import (
 )
 
 var Log *logrus.Logger
-
+var useCache = false
 func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
   start := time.Now()
     vars := mux.Vars(r)
@@ -29,9 +29,14 @@ func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
         Log.Error(err)
         // Not handling error for now.
     } else {
-        err = memcached.Get(media.CacheKey(id), &m)
-        if err != nil {
-            Log.Debug(err) // Probably a cache miss.
+        var cacheErr error
+        if useCache {
+            cacheErr = memcached.Get(media.CacheKey(id), &m)
+            if cacheErr != nil {
+                Log.Info(cacheErr) // Probably a cache miss.
+            }
+        }
+        if !useCache || cacheErr != nil {
             // Get from Mongo
             m, err = getMediaFromMongo(oid)
             if err != nil {

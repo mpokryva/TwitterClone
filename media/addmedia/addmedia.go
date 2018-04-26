@@ -22,6 +22,7 @@ type response struct {
 }
 
 var Log *logrus.Logger
+var cacheMedia = false
 func main() {
     Log.SetLevel(logrus.ErrorLevel)
 }
@@ -109,7 +110,7 @@ func insertMedia(m media.Media) (error) {
     _, err = col.InsertOne(context.Background(), &m)
     elapsed := time.Since(start)
     Log.Info("Insert media time elapsed: " + elapsed.String())
-    if err == nil { // Cache
+    if err == nil && cacheMedia { // Cache
         err = memcached.Set(media.CacheKey(m.ID.Hex()), &m)
         if err != nil {
             Log.Error(err)
