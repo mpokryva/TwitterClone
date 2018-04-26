@@ -27,7 +27,6 @@ type internalItem struct {
     ChildType string `json:"childType,omitempty" bson:"childType,omitempty"`
     ParentID string `json:"parent,omitempty" bson:"parent,omitempty"`
     MediaIDs []string `json:"media,omitempty" bson:"media,omitempty"`
-
 }
 
 type Property struct {
@@ -47,9 +46,9 @@ func (it Item) MarshalJSON() ([]byte, error) {
     if it.ParentID != nilObjectID {
         inIt.ParentID = it.ParentID.Hex()
     }
-    for _, mID := range it.MediaIDs {
-        mOid := mID.Hex()
-        inIt.MediaIDs = append(inIt.MediaIDs, mOid)
+    for _, mOID := range it.MediaIDs {
+        mID := mOID.Hex()
+        inIt.MediaIDs = append(inIt.MediaIDs, mID)
     }
     inIt.Username = it.Username
     inIt.Property = it.Property
@@ -69,6 +68,20 @@ func (item *Item) UnmarshalJSON(b []byte) error {
     oid, err := objectid.FromHex(inIt.ID)
     if err != nil {
         return err
+    }
+    if inIt.ParentID != "" {
+        pOID, err := objectid.FromHex(inIt.ParentID)
+        if err != nil {
+            return err
+        }
+        item.ParentID = pOID
+    }
+    for _, mID := range inIt.MediaIDs {
+        mOID, err := objectid.FromHex(mID)
+        if err != nil {
+            return err
+        }
+        item.MediaIDs = append(item.MediaIDs, mOID)
     }
     item.ID = oid
     item.Username = inIt.Username
