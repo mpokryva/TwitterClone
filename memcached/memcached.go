@@ -26,7 +26,10 @@ func Get(key string, v interface{}) error {
     if err != nil {
         return err
     } else {
+        umStart := time.Now()
         err = json.Unmarshal(item.Value, v)
+        elapsed = time.Since(umStart)
+        Log.Info("Memcached lib GET unmarshal: " + elapsed.String())
         return err
     }
 }
