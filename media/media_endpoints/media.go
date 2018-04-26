@@ -8,41 +8,43 @@ import (
     "strconv"
     "github.com/sirupsen/logrus"
     "github.com/gorilla/mux"
+    "github.com/mongodb/mongo-go-driver/mongo"
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "github.com/mongodb/mongo-go-driver/bson"
     "TwitterClone/wrappers"
     "TwitterClone/media"
+    "TwitterClone/memcached"
 )
 
 var Log *logrus.Logger
-func main() {
-    Log.SetLevel(logrus.ErrorLevel)
-}
-
-
 
 func GetMediaHandler(w http.ResponseWriter, r *http.Request) {
   start := time.Now()
     vars := mux.Vars(r)
     id := vars["id"]
     Log.Debug(id)
-    var media media.Media
+    var m media.Media
     oid, err := objectid.FromHex(id)
     if err != nil {
         Log.Error(err)
+        // Not handling error for now.
     } else {
-        media, err = getMedia(oid)
+        err = memcached.Get(media.CacheKey(id), &m)
         if err != nil {
-            Log.Error(err)
+            Log.Debug(err) // Probably a cache miss.
+            // Get from Mongo
+            m, err = getMediaFromMongo(oid)
+            if err != nil {
+                Log.Error(err)
+            }
         }
     }
-
     elapsed := time.Since(start)
     Log.WithFields(logrus.Fields{"timeElapsed":elapsed.String()}).Info("Get Media time elapsed")
-    encodeResponse(w, media)
+    encodeResponse(w, m)
 }
 
-func getMedia(oid objectid.ObjectID) (media.Media, error) {
+func getMediaFromMongo(oid objectid.ObjectID) (media.Media, error) {
   //dbStart := time.Now()
     var nilMedia media.Media
     client, err := wrappers.NewClient()
@@ -51,12 +53,25 @@ func getMedia(oid objectid.ObjectID) (media.Media, error) {
     }
     db := client.Database("twitter")
     coll := db.Collection("media")
-    var media media.Media
+    var m media.Media
     filter := bson.NewDocument(bson.EC.ObjectID("_id", oid))
-    err = coll.FindOne(context.Background(), filter).Decode(&media)
+    projection, err := mongo.Opt.Projection(bson.NewDocument(
+        bson.EC.Int32("content", 1),
+        bson.EC.Int32("contentType", 1),
+    ))
+    if err != nil {
+        return nilMedia, err
+    }
+    err = coll.FindOne(context.Background(), filter, projection).Decode(&m)
+    if err == nil { // Cache
+        cacheErr := memcached.Set(media.CacheKey(oid.Hex()), &m)
+        if cacheErr != nil {
+            Log.Error(cacheErr)
+        }
+    }
     //elapsed := time.Since(dbStart)
     //Log.WithFields(logrus.Fields{"timeElapsed":elapsed.String()}).Info("Get Media time elapsed")
-    return media, err
+    return m, err
 }
 
 func encodeResponse(w http.ResponseWriter, m media.Media) {
@@ -66,7 +81,7 @@ func encodeResponse(w http.ResponseWriter, m media.Media) {
         http.Error(w, err.Error(), http.StatusNotFound)
         return
     }
-    w.Header().Set("Content-Type", m.Header.Header["Content-Type"][0])
+    w.Header().Set("Content-Type", m.ContentType)
     w.Header().Set("Content-Length", strconv.Itoa(len(m.Content)))
     w.Write(m.Content)
 }

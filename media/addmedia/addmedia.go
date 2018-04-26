@@ -12,6 +12,7 @@ import (
     "github.com/mongodb/mongo-go-driver/bson/objectid"
     "TwitterClone/wrappers"
     "TwitterClone/media"
+    "TwitterClone/memcached"
 )
 
 type response struct {
@@ -24,7 +25,6 @@ var Log *logrus.Logger
 func main() {
     Log.SetLevel(logrus.ErrorLevel)
 }
-
 
 func checkLogin(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
@@ -72,7 +72,7 @@ func AddMediaHandler(w http.ResponseWriter, r *http.Request) {
     buf := bufContent.Bytes()
     var m media.Media
     if header != nil {
-        m.Header = *header
+        m.ContentType = header.Header["Content-Type"][0]
     }
     m.Content = buf
     m.Username = username
@@ -109,5 +109,11 @@ func insertMedia(m media.Media) (error) {
     _, err = col.InsertOne(context.Background(), &m)
     elapsed := time.Since(start)
     Log.Info("Insert media time elapsed: " + elapsed.String())
+    if err == nil { // Cache
+        err = memcached.Set(media.CacheKey(m.ID.Hex()), &m)
+        if err != nil {
+            Log.Error(err)
+        }
+    }
     return err
 }
