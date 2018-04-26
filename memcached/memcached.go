@@ -22,14 +22,16 @@ func Get(key string, v interface{}) error {
     start := time.Now()
     item, err := mc.Get(key)
     elapsed := time.Since(start)
-    Log.Info("Memcached lib GET elapsed: " + elapsed.String())
+    Log.Info("Memcached lib GET " + key + " , elapsed: " +
+        elapsed.String())
     if err != nil {
         return err
     } else {
         umStart := time.Now()
         err = json.Unmarshal(item.Value, v)
         elapsed = time.Since(umStart)
-        Log.Info("Memcached lib GET unmarshal: " + elapsed.String())
+        Log.Info("Memcached lib GET unmarshal: " + key + " , elapsed: " +
+            elapsed.String())
         return err
     }
 }
