@@ -17,6 +17,11 @@ type params struct {
   Limit int `json:"limit,string,omitempty"`
 }
 
+type followList struct {
+  Following []string `bson:"following,omitempty"`
+  Followers []string `bson:"followers,omitempty"`
+}
+
 type response struct {
     Status string `json:"status"`
     Users []string `json:"users"`
@@ -149,21 +154,27 @@ func findUserFollow(username string, follow string) ([]string,error){
   filter := bson.NewDocument(bson.EC.String("username", username))
   proj := bson.NewDocument(bson.EC.Int32(follow,1), bson.EC.Int32("_id",0))
 
-  var fArray []string
+  var fArray followList
   option, err := mongo.Opt.Projection(proj)
   if err != nil {
       return nil,err
   }
+  Log.Info(option)
   err = coll.FindOne(context.Background(),
-      filter,option).Decode(&fArray)
-  Log.Debug(fArray)
+      filter).Decode(&fArray)
+  Log.Info(fArray)
   if err != nil{
     elapsed := time.Since(dbStart)
     Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Error("Could not find user")
-    return fArray,errors.New("Could not find user")
+    Log.Error(err)
+    return nil,errors.New("Could not find user")
   }
 
   elapsed := time.Since(dbStart)
   Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Info()
-  return fArray,nil
+  if(follow == "followers"){
+    return fArray.Followers,nil
+  }else{
+    return fArray.Following,nil
+  }
 }

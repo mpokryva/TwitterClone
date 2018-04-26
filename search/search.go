@@ -31,6 +31,10 @@ type property struct {
   Likes int `json:"likes"`
 }
 
+type followingList struct {
+  Following []string `bson:"following,omitempty"`
+}
+
 type res struct {
   Status string `json:"status"`
   Items []item.Item `json:"items"`
@@ -117,7 +121,7 @@ func getFollowingList(username string, db mongo.Database) ([]string){
   filter := bson.NewDocument(bson.EC.String("username",username))
   c := db.Collection("users")
   proj := bson.NewDocument(bson.EC.Int32("following",1), bson.EC.Int32("_id",0))
-  var fArray []string
+  var fArray followingList
   option, err := mongo.Opt.Projection(proj)
   if err != nil {
       return nil
@@ -127,8 +131,8 @@ func getFollowingList(username string, db mongo.Database) ([]string){
     Log.Error("Could not find user in DB")
     return nil
   }
-  Log.Info(fArray)
-  return fArray
+  Log.Info(fArray.Following)
+  return fArray.Following
 
 }
 
