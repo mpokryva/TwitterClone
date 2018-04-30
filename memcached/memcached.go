@@ -17,8 +17,12 @@ func init() {
     mc.MaxIdleConns = MaxIdleConns
 }
 
+func Delete(key string) error {
+   return mc.Delete(key)
+}
+
 func Get(key string, v interface{}) error {
-    Log.SetLevel(logrus.DebugLevel)
+    Log.SetLevel(logrus.InfoLevel)
     start := time.Now()
     item, err := mc.Get(key)
     elapsed := time.Since(start)
@@ -37,7 +41,7 @@ func Get(key string, v interface{}) error {
 }
 
 func Set(key string, v interface{}) error {
-    Log.SetLevel(logrus.DebugLevel)
+    Log.SetLevel(logrus.InfoLevel)
     start := time.Now()
     b, err := json.Marshal(v)
     if err != nil {

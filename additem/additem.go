@@ -138,32 +138,14 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
     }
     pOID, mOIDs, err := validateRequest(req)
     if err == nil {
-        var it item.Item
-        it.Content = *req.Content
-        if req.ChildType != nil {
-            it.ChildType = *req.ChildType
-        }
-        if req.ParentID != nil {
-            it.ParentID = pOID
-            Log.Debug(*req.ParentID)
-        }
-        if req.MediaIDs != nil {
-            it.MediaIDs = mOIDs
-        }
-        it.Username = username
-        var res response
-        logrus.Debug(it)
-        // Add the Item.
         oid := objectid.New()
-        Log.Debug(oid)
-        it.ID = oid
         res.Status = "OK"
         res.ID = oid.Hex()
         elapsed := time.Since(start)
         Log.WithFields(logrus.Fields{"endpoint": "additem",
             "timeElapsed":elapsed.String()}).Info("pre-insert")
         encodeResponse(w, res) // Cheat
-        go insertWithTimer(it, start)
+        go insertWithTimer(req, oid, pOID, mOIDs, username, start)
     } else {
         res.Status = "error"
         res.Error = err.Error()
@@ -171,7 +153,26 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func insertWithTimer(it item.Item, start time.Time) {
+func insertWithTimer(req request, oid objectid.ObjectID,
+    pOID objectid.ObjectID, mOIDs []objectid.ObjectID,
+    username string, start time.Time) {
+    var it item.Item
+    it.Content = *req.Content
+    if req.ChildType != nil {
+        it.ChildType = *req.ChildType
+    }
+    if req.ParentID != nil {
+        it.ParentID = pOID
+        Log.Debug(*req.ParentID)
+    }
+    if req.MediaIDs != nil {
+        it.MediaIDs = mOIDs
+    }
+    it.Username = username
+    logrus.Debug(it)
+    // Add the Item.
+    Log.Debug(oid)
+    it.ID = oid
     err := insertItem(it)
     if err != nil {
         Log.Error(err)

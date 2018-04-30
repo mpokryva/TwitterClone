@@ -16,9 +16,9 @@ import (
     "TwitterClone/memcached"
 )
 
-type Like struct {
-    ID objectid.ObjectID `json:"id" bson:"_id"`
-    Username string `json:"username" bson:"username"`
+type like struct {
+    ItemID objectid.ObjectID `bson:"item_id"`
+    Username string `bson:"username"`
 }
 
 type response struct {
@@ -43,25 +43,26 @@ var Log *logrus.Logger
 //LIKE ITEM FUNCTIONS START HERE
 
 func LikeItemHandler(w http.ResponseWriter, r *http.Request) {
-  start := time.Now()
+    Log.SetLevel(logrus.InfoLevel)
+    start := time.Now()
     id := mux.Vars(r)["id"]
     Log.Debug(id)
 
     var res responseL
     username, err := checkLogin(r)
     if err != nil {
-      Log.Error("User not logged in")
+        Log.Error("User not logged in")
         res.Status = "error"
         res.Error = "User not logged in."
     } else {
         req, err := decodeRequest(r)
-        if (err != nil) {
-          Log.Error(r)
-          Log.Error("JSON decoding error")
+        if err != nil {
+            Log.Error(r)
+            Log.Error("JSON decoding error")
             res.Status = "error"
             res.Error = "JSON decoding error."
         } else {
-            res = likeItemEndpoint(id, username, *req.Like)
+            res = likeItem(id, username, *req.Like)
         }
     }
 
@@ -77,118 +78,100 @@ func decodeRequest(r *http.Request) (Req, error) {
     return like, err
 }
 
-func likeItemEndpoint(id string, username string, like bool) responseL {
-    return likeItem(id, username, like)
-}
-
-func likeItem(id string, username string, like bool) responseL {
+func likeItem(itemID string, username string, shouldLike bool) responseL {
     var resp responseL
     dbStart := time.Now()
     client, err := wrappers.NewClient()
-    db := client.Database("twitter")
-    // col := db.Collection("users")
-
-    // if err != nil {
-    //     Log.Error("Error connecting to database")
-    //     resp.Status = "error"
-    //     resp.Error = "Database unavailable"
-    //     return resp
-    // }
-
-    objectid,err := objectid.FromHex(id)
-    elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Like an item db query time elapsed")
     if err != nil {
+       Log.Error(err)
+       resp.Status = "error"
+       resp.Error = err.Error()
+       return resp
+    }
+    db := client.Database("twitter")
+    itemOID, err := objectid.FromHex(itemID)
+    if err != nil {
+       Log.Error(err)
+       resp.Status = "error"
+       resp.Error = err.Error()
+       return resp
+    }
+    dbStart = time.Now()
+    col := db.Collection("likes")
+    var like like
+    like.ItemID = itemOID
+    like.Username = username
+    filter := bson.NewDocument(
+        bson.EC.ObjectID("item_id", itemOID),
+        bson.EC.String("username", username))
+    resDoc := bson.NewDocument()
+    err = col.FindOne(context.Background(), filter).Decode(resDoc)
+    elapsed := time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint":"item",
+        "timeElapsed":elapsed.String()}).Info(
+            "Getting like from likes coll.")
+    if (err == nil) == shouldLike {
+        // Like already exists
+        err = errors.New("Tried to duplicate like or dislike " +
+        " nonexistent like for  username: " + like.Username +
+        " and itemID: " + like.ItemID.Hex())
+        Log.Error(err)
         resp.Status = "error"
-        resp.Error = "Invalid Item ID format"
+        resp.Error = err.Error()
+        return resp
+    } else {
+        Log.Error(err)
+        resp.Status = "OK"
+        go updateLike(client, like, shouldLike)
         return resp
     }
+}
 
-	// // Check if user liking exists.
- //    // Assuming that logged in user exists (not bogus cookie).
- //    checkUserFilter := bson.NewDocument(
- //        bson.EC.String("username", username))
- //    err = col.FindOne(context.Background(), checkUserFilter)
- //    if err != nil {
- //        Log.Info("User does not exist")
- //        resp.Status = "error"
- //        resp.Error = "User in cookie does not exist"
- //        return resp
- //    }
-  dbStart = time.Now()
-    col := db.Collection("likes")
-    if err != nil {
-        Log.Error("Error connecting to database")
-        resp.Status = "error"
-        resp.Error = "Database unavailable"
-        return resp//e object into db (username, itemid) *IF NOT EXISTS maybe*
-    //////////////////
-    //THIS IS BROKEN
-    }
-    if like {
-    // Log.Debug("We are liking")
-    var likeItem Like
-    likeItem.ID = objectid
-    likeItem.Username = username
-    //insert lik
-    //////////////////
-
-    _, err = col.InsertOne(context.Background(), &likeItem)
-    elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Inserting a like time elapsed")
+func updateLike(client *mongo.Client,
+    like like, shouldLike bool) {
+    db := client.Database("twitter")
+    coll := db.Collection("likes")
+    dbStart := time.Now()
+    if shouldLike {
+        _, err := coll.InsertOne(context.Background(), &like)
         if err != nil {
-            Log.Info("Error adding to likes collection")
-            resp.Status = "error"
-            resp.Error = "Error liking please try again"
-            return resp
+           Log.Error(err)
         }
-    }else{
-    //delete like object from db (username, itemid)
-    var likeItem Like
-    likeItem.ID = objectid
-    likeItem.Username = username
-    _, err = col.DeleteOne(context.Background(), &likeItem)
-    elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Delete like time elapsed")
+        elapsed := time.Since(dbStart)
+        Log.WithFields(logrus.Fields{"endpoint":"item",
+            "timeElapsed":elapsed.String()}).Info(
+                "Inserting a like time elapsed")
+    } else {
+        // Delete like object (itemid, username).
+        _, err := coll.DeleteOne(context.Background(), &like)
         if err != nil {
-            Log.Info("User does not have an entry in likes for this itemid")
-            resp.Status = "error"
-            resp.Error = "You have not liked this tweet before"
-            return resp
+            Log.Error(err)
         }
+        elapsed := time.Since(dbStart)
+        Log.WithFields(logrus.Fields{"endpoint":"item",
+            "timeElapsed":elapsed.String()}).Info("Delete like time elapsed")
     }
-    col = db.Collection("tweets")
-
+    // Update the tweet.
+    coll = db.Collection("tweets")
     // Are we incrementing or decrementing the number of likes?
     var countInc int32
-    if like {
+    if shouldLike {
         countInc = 1
     } else {
         countInc = -1
     }
-
-    // Update like count.
-    //////////////////
-    //THIS IS BROKEN or MAYBE I PUT THE WRONG OBJECTID IN POSTMAN??
-    //i think my query is wwrong..
-    //http://130.245.170.tem/5acd9afc5b97328b39569268/like
-    //{"status":"error","error":"Invalid Item ID"}
-    //////////////////
-    filter := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
+    filter := bson.NewDocument(bson.EC.ObjectID("_id", like.ItemID))
     update := bson.NewDocument(bson.EC.SubDocumentFromElements("$inc",
         bson.EC.Int32("property.likes", countInc)))
-    err = UpdateOne(col, filter, update)
-
+    err := UpdateOne(coll, filter, update)
     if err != nil {
-        Log.Error("Did not find ObjectID")
-        resp.Status = "error"
-        resp.Error = "Invalid 65/iItem ID"
-        return resp
+        Log.Error(err)
+    } else {
+        err := memcached.Delete(item.CacheKey(like.ItemID.Hex()))
+        if err != nil {
+            Log.Error(err)
+        }
     }
-    resp.Status = "OK"
-    resp.Error = ""
-    // Log.Debug("Encoded!")
-    return resp
 }
 
 func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) error {
