@@ -25,7 +25,7 @@ type res struct {
 var Log *logrus.Logger
 
 func VerifyHandler(w http.ResponseWriter, req *http.Request) {
-    Log.SetLevel(logrus.InfoLevel)
+    Log.SetLevel(logrus.DebugLevel)
     start := time.Now()
     decoder := json.NewDecoder(req.Body)
     var verif verification
@@ -84,6 +84,8 @@ func verifyUser(verif verification) error {
         "timeElapsed":elapsed.String()}).Info()
     result := bson.NewDocument()
     err = coll.FindOne(context.Background(), filter).Decode(result)
+    Log.Debug(*verif.Email)
+    Log.Debug(result)
     elem, err := result.Lookup("_id")
     if err != nil {
         return err
