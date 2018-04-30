@@ -36,14 +36,15 @@ func VerifyHandler(w http.ResponseWriter, req *http.Request) {
     }
     valid := validateParams(verif)
     if valid {
-        if(verifyUser(verif)){
+        err = verifyUser(verif)
+        if err == nil {
             r.Status = "OK"
-        }else {
-            Log.Error("Input not valid!")
+        } else {
+            Log.Error(err)
             r.Status = "error"
-            r.Error = "Could not complete verification"
+            r.Error = err.Error()
         }
-    }else{
+    } else {
         r.Status = "error"
         r.Error = "Not enough input"
     }
@@ -67,11 +68,10 @@ func validateParams(verif verification) bool {
     return valid
 }
 
-func verifyUser(verif verification) bool {
+func verifyUser(verif verification) error {
     client, err := wrappers.NewClient()
     if err != nil {
-        Log.Error(err)
-        return false
+        return err
     }
     db := client.Database("twitter")
     coll := db.Collection("emails")
@@ -85,37 +85,28 @@ func verifyUser(verif verification) bool {
     err = coll.FindOne(context.Background(), filter).Decode(result)
     elem, err := result.Lookup("_id")
     if err != nil {
-        Log.Error(err)
-        return false
+        return err
     }
     oid := elem.Value().ObjectID()
     if *verif.Key == "abracadabra" {
         err = mongoUpdateVerify(oid)
-        if err != nil {
-            Log.Error(err)
-        }
-        return err == nil
+        return err
     }
     var user user.User
     coll = db.Collection("users")
     err = coll.FindOne(context.Background(), filter).Decode(&user)
     if err != nil {
-        Log.Error(err)
-        return false
+        return err
     } else {
         Log.Debug(user)
     }
     if user.Key == "<" + *verif.Key + ">" {
         // Verification keys match.
         err = mongoUpdateVerify(oid)
-        if err != nil {
-            Log.Error(err)
-        }
-        return err == nil
     } else {
-        Log.Info("Verification keys do not match.")
-        return false
+        err = errors.New("Verification keys do not match.")
     }
+    return err
 }
 
 func mongoUpdateVerify(userID objectid.ObjectID) error {
@@ -136,7 +127,7 @@ func mongoUpdateVerify(userID objectid.ObjectID) error {
         filter, update)
     elapsed := time.Since(dbStart)
     Log.WithFields(logrus.Fields{"msg":"Update user verified field",
-        "timeElapsed":elapsed.String()}).Error(err)
+        "timeElapsed":elapsed.String()}).Info()
     if err != nil {
         return err
     }
