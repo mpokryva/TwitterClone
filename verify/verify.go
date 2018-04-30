@@ -36,6 +36,7 @@ func VerifyHandler(w http.ResponseWriter, req *http.Request) {
     }
     valid := validateParams(verif)
     if valid {
+        Log.WithFields(logrus.Fields{"email": verif.Email, "key": verif.Key}).Info()
         err = verifyUser(verif)
         if err == nil {
             r.Status = "OK"
