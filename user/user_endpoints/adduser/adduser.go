@@ -79,7 +79,7 @@ func checkUserExists(username string, email string) (error) {
     return nil
 }
 
-func insertUserAndSendEmail(username string, email string, password string) (string, error) {
+func insertUser(username string, email string, password string) (string, error) {
     dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
@@ -138,14 +138,9 @@ func insertUserAndSendEmail(username string, email string, password string) (str
     if err != nil {
         Log.Error(err)
         return "", err
-    }
-    // Email user once inserted into db.
-    err = sendEmail(email, key)
-    if err != nil {
-        Log.Error(err)
-        return "", err
-    }
-    return key, nil
+    } else {
+        return key, nil
+     }
 }
 
 func sendError(w http.ResponseWriter, err error) {
@@ -178,12 +173,19 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
         return
     }
     var res response
-    res.Status = "OK"
-    elapsed := time.Since(start)
-    Log.Info("Add User elapsed: " + elapsed.String())
-    encodeResponse(w, res)
     // No error. Add user to db and send email.
-    go insertUserAndSendEmail(*us.Username, *us.Email, *us.Password)
+    key, err := insertUser(*us.Username, *us.Email, *us.Password)
+    if err != nil {
+        Log.Error(err)
+        sendError(w, err)
+        return
+    } else {
+        res.Status = "OK"
+        encodeResponse(w, res)
+        elapsed := time.Since(start)
+        Log.Info("Add User elapsed: " + elapsed.String())
+        go sendEmail(*us.Email, key)
+    }
 }
 
 func sendEmail(email string, key string) error {
