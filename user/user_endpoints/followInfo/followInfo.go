@@ -11,11 +11,8 @@ import (
     "github.com/gorilla/mux"
     "github.com/mongodb/mongo-go-driver/bson"
 	  "github.com/mongodb/mongo-go-driver/mongo"
+    "strconv"
 )
-
-type params struct {
-  Limit int `json:"limit,string,omitempty"`
-}
 
 type followList struct {
   Following []string `bson:"following,omitempty"`
@@ -43,21 +40,22 @@ func getUsername(r *http.Request) (string){
   return username
 }
 
-func checkLimit() (params,error){
-  var p params
-  if(p.Limit != 0 && p.Limit > 200){
+func checkLimit(r *http.Request) (int64,error){
+  limit, err := strconv.ParseInt(r.URL.Query().Get("limit"),10,64)
+  if err != nil{
+      limit = 50
+  }else if limit != 0 && limit > 200{
     Log.Error("Limit exceeds 200")
-    return p,errors.New("Limit exceeds 200")
-  }else{
-    p.Limit = 50
+    return 0,errors.New("Limit exceeds 200")
   }
-  return p,nil
+  Log.Info(limit)
+  return limit,nil
 }
 
 func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
 start := time.Now()
     var resp response
-    p, e := checkLimit()
+    lim, e := checkLimit(r)
     if e != nil{
       Log.Info(e)
       resp.Status = "error"
@@ -65,7 +63,7 @@ start := time.Now()
       encodeResponse(w,resp)
     }
     username := getUsername(r)
-    list, err := findUserFollowing(username,p)
+    list, err := findUserFollowing(username,lim)
     if err != nil {
         Log.Info(err)
         resp.Status = "error"
@@ -87,7 +85,7 @@ start := time.Now()
 func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
 start := time.Now()
     var resp response
-    p, e := checkLimit()
+    lim, e := checkLimit(r)
     if e != nil{
       Log.Info(e)
       resp.Status = "error"
@@ -95,7 +93,7 @@ start := time.Now()
       encodeResponse(w,resp)
     }
     username := getUsername(r)
-    list, err := findUserFollowers(username,p)
+    list, err := findUserFollowers(username,lim)
     if err != nil {
         Log.Info(err)
         resp.Status = "error"
@@ -114,8 +112,8 @@ start := time.Now()
     }
 }
 
-func findUserFollowing(username string, p params) ([]string, error) {
-    following,err := findUserFollow(username,"following")
+func findUserFollowing(username string, lim int64) ([]string, error) {
+    following,err := findUserFollow(username,"following", lim)
     list := []string{}
     if err != nil{
       Log.Error(err)
@@ -128,8 +126,8 @@ func findUserFollowing(username string, p params) ([]string, error) {
     }
 }
 
-func findUserFollowers(username string, p params) ([]string, error) {
-    followers,err := findUserFollow(username, "followers")
+func findUserFollowers(username string, lim int64) ([]string, error) {
+    followers,err := findUserFollow(username, "followers", lim)
     list := []string{}
     if err != nil{
       Log.Error(err)
@@ -143,7 +141,7 @@ func findUserFollowers(username string, p params) ([]string, error) {
     }
 }
 
-func findUserFollow(username string, follow string) ([]string,error){
+func findUserFollow(username string, follow string, lim int64) ([]string,error){
   dbStart := time.Now()
   client, err := wrappers.NewClient()
   if err != nil {
@@ -152,16 +150,17 @@ func findUserFollow(username string, follow string) ([]string,error){
   db := client.Database("twitter")
   coll := db.Collection("users")
   filter := bson.NewDocument(bson.EC.String("username", username))
-  proj := bson.NewDocument(bson.EC.Int32(follow,1), bson.EC.Int32("_id",0))
+  proj := bson.NewDocument(bson.EC.SubDocumentFromElements(follow,bson.EC.Int64("$slice",lim)), bson.EC.Int32("_id",0))
 
   var fArray followList
   option, err := mongo.Opt.Projection(proj)
   if err != nil {
       return nil,err
   }
+
   Log.Info(option)
   err = coll.FindOne(context.Background(),
-      filter).Decode(&fArray)
+      filter,option).Decode(&fArray)
   Log.Info(fArray)
   if err != nil{
     elapsed := time.Since(dbStart)
