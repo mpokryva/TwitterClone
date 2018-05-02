@@ -40,7 +40,8 @@ func checkLogin(r *http.Request) (string, error) {
 }
 
 
-func insertItem(it item.Item) (error) {
+func insertItem(it item.Item) (item.Item, error) {
+    var nilItem item.Item
     start := time.Now()
     client, err := wrappers.NewClient()
     db := client.Database("twitter")
@@ -50,10 +51,12 @@ func insertItem(it item.Item) (error) {
     dbStart := time.Now()
     _, err = col.InsertOne(context.Background(), &it)
     elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"endpoint": "additem", "timeElapsed":elapsed.String()}).Debug("insert item time elapsed")
+    Log.WithFields(logrus.Fields{"endpoint": "additem",
+        "timeElapsed":elapsed.String()}).Debug("insert item time elapsed")
 
     if err != nil {
-        return err
+        Log.Error(err)
+        return nilItem, err
     }
     var result *mongo.UpdateResult
     if it.ChildType == "retweet" {
@@ -66,12 +69,14 @@ func insertItem(it item.Item) (error) {
         result, err = col.UpdateOne(context.Background(), filter, update)
 
         elapsed := time.Since(dbStart)
-        Log.WithFields(logrus.Fields{"endpoint": "addItem", "timeElapsed":elapsed.String()}).Info("retweet increment time elapsed")
+        Log.WithFields(logrus.Fields{"endpoint": "addItem",
+            "timeElapsed":elapsed.String()}).Info("retweet increment time elapsed")
         if err != nil {
-            return err
+            Log.Error(err)
+            return nilItem, err
         } else if result.ModifiedCount != 1 {
             err = errors.New("Referenced Parent ID not found")
-            return err
+            return nilItem, err
         }
     }
     // Update media which item references.
@@ -91,18 +96,19 @@ func insertItem(it item.Item) (error) {
             result, err = col.UpdateMany(context.Background(), filter, update)
 
             elapsed := time.Since(dbStart)
-            Log.WithFields(logrus.Fields{"endpoint": "addItem", "timeElapsed":elapsed.String()}).Info("update media time elapsed")
+            Log.WithFields(logrus.Fields{"endpoint": "addItem",
+                "timeElapsed":elapsed.String()}).Info("update media time elapsed")
         if err != nil {
-            return err
+            return nilItem, err
         } else if result.ModifiedCount != 1 {
             err = errors.New("Media item_ids not updated. Probably invalid ids.")
             Log.Error(err)
-            return err
+            return nilItem, err
         }
     }
     elapsed = time.Since(start)
     //Log.Info("AddItem elapsed: " + elapsed.String())
-    return nil
+    return it, nil
 }
 
 func decodeRequest(r *http.Request) (request, error) {
@@ -153,6 +159,26 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
+func insertToES(it item.Item) error {
+    client, err := wrappers.ESClient()
+    if err != nil {
+        Log.Error(err)
+        return err
+    }
+    Log.Error(it)
+    res, err := client.Index().
+    Index("tweets").
+    Type("tweet").
+    BodyJson(it).
+    Do(context.Background())
+    if err != nil {
+        Log.Error(err)
+    } else {
+        Log.Info(res)
+    }
+    return err
+}
+
 func insertWithTimer(req request, oid objectid.ObjectID,
     pOID objectid.ObjectID, mOIDs []objectid.ObjectID,
     username string, start time.Time) {
@@ -173,7 +199,7 @@ func insertWithTimer(req request, oid objectid.ObjectID,
     // Add the Item.
     Log.Debug(oid)
     it.ID = oid
-    err := insertItem(it)
+    it, err := insertItem(it)
     if err != nil {
         Log.Error(err)
     } else {
@@ -187,26 +213,12 @@ func insertWithTimer(req request, oid objectid.ObjectID,
     elapsed := time.Since(start)
     Log.WithFields(logrus.Fields{"endpoint": "additem",
         "timeElapsed":elapsed.String()}).Info("post-insert")
+    err = insertToES(it)
+    if err != nil {
+        Log.Error(err)
+    }
 }
 
-func addItemEndpoint(it item.Item) response {
-    var res response
-    logrus.Debug(it)
-    // Add the Item.
-    oid := objectid.New()
-    Log.Debug(oid)
-    it.ID = oid
-    err := insertItem(it)
-    if err != nil {
-        Log.Error("Item could not be inserted into database.")
-        res.Status = "error"
-        res.Error = err.Error()
-    } else {
-        res.Status = "OK"
-        res.ID = oid.Hex()
-    }
-    return res
-}
 
 func validateRequest(req request) (objectid.ObjectID, []objectid.ObjectID, error) {
     var pOID objectid.ObjectID
