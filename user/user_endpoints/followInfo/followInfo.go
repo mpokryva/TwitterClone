@@ -78,9 +78,9 @@ start := time.Now()
             resp.Status = "error"
             resp.Error = err.Error()
 
+        encodeResponse(w,resp)
         elapsed := time.Since(start)
         Log.Info("Get Following elapsed: " + elapsed.String())
-        encodeResponse(w,resp)
         return
         }else{
           resp.Status = "OK"
@@ -91,9 +91,9 @@ start := time.Now()
         resp.Status = "OK"
         resp.Users = l.Following
     }
+    encodeResponse(w, resp)
     elapsed = time.Since(start)
     Log.Info("Get Following elapsed: " + elapsed.String())
-      encodeResponse(w, resp)
     }
 
 

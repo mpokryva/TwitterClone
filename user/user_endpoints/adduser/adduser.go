@@ -174,9 +174,6 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
     }
     var res response
     // No error. Add user to db and send email.
-    //trying a cheat on AddUserHandler
-    res.Status = "OK"
-    encodeResponse(w, res)
 
     key, err := insertUser(*us.Username, *us.Email, *us.Password)
     if err != nil {
@@ -184,11 +181,11 @@ func AddUserHandler(w http.ResponseWriter, req *http.Request) {
         sendError(w, err)
         return
     }else {
-    //     res.Status = "OK"
-        //encodeResponse(w, res)
+        res.Status = "OK"
+        encodeResponse(w, res)
         elapsed := time.Since(start)
         Log.Info("Add User elapsed: " + elapsed.String())
-         go sendEmail(*us.Email, key)
+        go sendEmail(*us.Email, key)
     }
 }
 
