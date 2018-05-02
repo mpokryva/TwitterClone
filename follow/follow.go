@@ -122,7 +122,7 @@ func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) e
     }
     if err != nil {
         return err
-    } else if !success {
+    } else if !success {      
         return errors.New("Database is operating normally, but follow update " +
         "operation failed.")
     } else {
