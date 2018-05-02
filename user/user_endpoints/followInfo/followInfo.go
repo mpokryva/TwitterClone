@@ -12,6 +12,8 @@ import (
     "github.com/mongodb/mongo-go-driver/bson"
 	  "github.com/mongodb/mongo-go-driver/mongo"
     "strconv"
+    "TwitterClone/item"
+    "TwitterClone/memcached"
 )
 
 type followList struct {
@@ -63,24 +65,38 @@ start := time.Now()
       encodeResponse(w,resp)
     }
     username := getUsername(r)
-    list, err := findUserFollowing(username,lim)
+    var l followList
+    memstart := time.Now()
+    err := memcached.Get(item.CacheKey(username), &l)
+    elapsed := time.Since(memstart)
+    Log.WithFields(logrus.Fields{"endpoint":"item",
+        "timeElapsed":elapsed.String()}).Info("Get item from memcached")
     if err != nil {
-        Log.Info(err)
-        resp.Status = "error"
-        resp.Error = err.Error()
+        Log.Debug(err)
+        list, err := findUserFollowing(username,lim)
+        if err != nil {
+            Log.Info(err)
+            resp.Status = "error"
+            resp.Error = err.Error()
 
-    elapsed := time.Since(start)
-    Log.Info("Get Following elapsed: " + elapsed.String())
+        elapsed := time.Since(start)
+        Log.Info("Get Following elapsed: " + elapsed.String())
         encodeResponse(w,resp)
-    }else{
-      resp.Status = "OK"
-      resp.Users = list
-
-    elapsed := time.Since(start)
+        return
+        }else{
+          resp.Status = "OK"
+          resp.Users = list
+        }
+    } else {
+        Log.Debug("Cache hit")
+        resp.Status = "OK"
+        resp.Users = l.Following
+    }
+    elapsed = time.Since(start)
     Log.Info("Get Following elapsed: " + elapsed.String())
       encodeResponse(w, resp)
     }
-}
+
 
 func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
 start := time.Now()
@@ -93,24 +109,39 @@ start := time.Now()
       encodeResponse(w,resp)
     }
     username := getUsername(r)
-    list, err := findUserFollowers(username,lim)
+    var l followList
+    memstart := time.Now()
+    err := memcached.Get(item.CacheKey(username), &l)
+    elapsed := time.Since(memstart)
+    Log.WithFields(logrus.Fields{"endpoint":"item",
+        "timeElapsed":elapsed.String()}).Info("Get item from memcached")
     if err != nil {
-        Log.Info(err)
-        resp.Status = "error"
-        resp.Error = err.Error()
+        Log.Debug(err)
+        list, err := findUserFollowers(username,lim)
+        if err != nil {
+            Log.Info(err)
+            resp.Status = "error"
+            resp.Error = err.Error()
 
-    elapsed := time.Since(start)
-    Log.Info("Get Followers elapsed: " + elapsed.String())
-        encodeResponse(w,resp)
-    }else{
-      resp.Status = "OK"
-      resp.Users = list
+        elapsed := time.Since(start)
+        Log.Info("Get Followers elapsed: " + elapsed.String())
+            encodeResponse(w,resp)
+            return
+        }else{
+          resp.Status = "OK"
+          resp.Users = list
+        }
+    } else {
+        Log.Debug("Cache hit")
+        resp.Status = "OK"
+        resp.Users = l.Followers
+    }
 
-    elapsed := time.Since(start)
+    elapsed = time.Since(start)
     Log.Info("Get Followers elapsed: " + elapsed.String())
       encodeResponse(w, resp)
     }
-}
+
 
 func findUserFollowing(username string, lim int64) ([]string, error) {
     following,err := findUserFollow(username,"following", lim)
@@ -164,16 +195,26 @@ func findUserFollow(username string, follow string, lim int64) ([]string,error){
   Log.Info(fArray)
   if err != nil{
     elapsed := time.Since(dbStart)
-    Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Error("Could not find user")
+    Log.WithFields(logrus.Fields{"msg":"Get Follower/ing time elapsed", "timeElapsed":elapsed.String()}).Error("Could not find follower/ing list")
     Log.Error(err)
     return nil,errors.New("Could not find user")
   }
 
   elapsed := time.Since(dbStart)
-  Log.WithFields(logrus.Fields{"msg":"Check if user exists time elapsed", "timeElapsed":elapsed.String()}).Info()
+  Log.WithFields(logrus.Fields{"msg":"Get Followier/ing time elapsed", "timeElapsed":elapsed.String()}).Info()
   if(follow == "followers"){
+    // Set in cache
+    err = memcached.Set(item.CacheKey(username), &fArray)
+    if err != nil {
+        Log.Error(err)
+    }
     return fArray.Followers,nil
   }else{
+    // Set in cache
+    err = memcached.Set(item.CacheKey(username), &fArray)
+    if err != nil {
+        Log.Error(err)
+    }
     return fArray.Following,nil
   }
 }
