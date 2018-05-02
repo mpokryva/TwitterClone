@@ -178,7 +178,7 @@ func findUserFollow(username string, follow string, lim int64) ([]string,error){
       return nil,err
   }
   db := client.Database("twitter")
-  coll := db.Collection("users")
+  coll := db.Collection(follow)
   filter := bson.NewDocument(bson.EC.String("username", username))
   proj := bson.NewDocument(bson.EC.SubDocumentFromElements(follow,bson.EC.Int64("$slice",lim)), bson.EC.Int32("_id",0))
 

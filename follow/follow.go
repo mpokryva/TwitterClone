@@ -47,6 +47,8 @@ func followUser(currentUser string, userToFol string, follow bool) error {
 
     db := client.Database("twitter")
     coll := db.Collection("users")
+    followersCol := db.Collection("followers")
+    followingCol := db.Collection("following")
     // Check if user to follow exists.
     // Assuming that logged in user exists (not bogus cookie).
     checkUserFilter := bson.NewDocument(
@@ -74,7 +76,7 @@ func followUser(currentUser string, userToFol string, follow bool) error {
     update := bson.NewDocument(
         bson.EC.SubDocumentFromElements(listOp,
             bson.EC.String("following", userToFol)))
-    err = UpdateOne(coll, filter, update)
+    err = UpdateOne(followingCol, filter, update)
     if err != nil {
         return err
     }
@@ -94,7 +96,7 @@ func followUser(currentUser string, userToFol string, follow bool) error {
     update = bson.NewDocument(
         bson.EC.SubDocumentFromElements(listOp,
             bson.EC.String("followers", currentUser)))
-    err = UpdateOne(coll, filter, update)
+    err = UpdateOne(followersCol, filter, update)
     if err != nil {
         return err
     }
