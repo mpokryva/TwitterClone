@@ -12,7 +12,6 @@ import (
     "github.com/mongodb/mongo-go-driver/bson"
 	  "github.com/mongodb/mongo-go-driver/mongo"
     "strconv"
-    "TwitterClone/item"
     "TwitterClone/memcached"
 )
 
@@ -67,7 +66,7 @@ start := time.Now()
     username := getUsername(r)
     var l followList
     memstart := time.Now()
-    err := memcached.Get(item.CacheKey(username), &l)
+    err := memcached.Get(username, &l)
     elapsed := time.Since(memstart)
     Log.WithFields(logrus.Fields{"endpoint":"item",
         "timeElapsed":elapsed.String()}).Info("Get item from memcached")
@@ -111,7 +110,7 @@ start := time.Now()
     username := getUsername(r)
     var l followList
     memstart := time.Now()
-    err := memcached.Get(item.CacheKey(username), &l)
+    err := memcached.Get(username, &l)
     elapsed := time.Since(memstart)
     Log.WithFields(logrus.Fields{"endpoint":"item",
         "timeElapsed":elapsed.String()}).Info("Get item from memcached")
@@ -204,14 +203,14 @@ func findUserFollow(username string, follow string, lim int64) ([]string,error){
   Log.WithFields(logrus.Fields{"msg":"Get Followier/ing time elapsed", "timeElapsed":elapsed.String()}).Info()
   if(follow == "followers"){
     // Set in cache
-    err = memcached.Set(item.CacheKey(username), &fArray)
+    err = memcached.Set(username, &fArray)
     if err != nil {
         Log.Error(err)
     }
     return fArray.Followers,nil
   }else{
     // Set in cache
-    err = memcached.Set(item.CacheKey(username), &fArray)
+    err = memcached.Set(username, &fArray)
     if err != nil {
         Log.Error(err)
     }
