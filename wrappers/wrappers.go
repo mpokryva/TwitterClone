@@ -16,11 +16,22 @@ import (
 var mongoClient *mongo.Client
 var Log *log.Logger
 var mcClient *http.Client
+var esClient *elastic.Client
 
 func init() {
     mcClient = &http.Client{
         Timeout: time.Millisecond * 100, // 100ms timeout
     }
+}
+
+func ESClient() (*elastic.Client, error) {
+    if esClient != nil {
+        return esClient, nil
+    }
+    var err error
+    var esURL = "http://192.168.1.27:9200"
+    esClient, err = elastic.NewClient(elastic.SetURL(esURL))
+    return esClient, err
 }
 
 func NewClient() (*mongo.Client, error) {
