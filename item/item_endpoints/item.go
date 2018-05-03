@@ -14,6 +14,7 @@ import (
     "TwitterClone/wrappers"
     "TwitterClone/item"
     "TwitterClone/memcached"
+    "github.com/olivere/elastic"
 )
 
 type like struct {
@@ -170,6 +171,25 @@ func updateLike(client *mongo.Client,
         err := memcached.Delete(item.CacheKey(like.ItemID.Hex()))
         if err != nil {
             Log.Error(err)
+        }
+        // Update in ES.
+        esClient, err := wrappers.ESClient()
+        if err != nil {
+            Log.Error(err)
+            return
+        }
+        update, err := esClient.Update().Index("tweets").
+            Type("tweet").
+            Id(like.ItemID.Hex()).
+            Script(elastic.NewScriptInline("ctx._source.property.likes += params.num").
+            Lang("painless").
+            Param("num", 1)).
+            Upsert(map[string]interface{}{"property.likes": 0}).
+            Do(context.Background())
+        if err != nil {
+            Log.Error(err)
+        } else {
+            Log.Debug(update)
         }
     }
 }

@@ -13,6 +13,7 @@ import (
     "TwitterClone/wrappers"
     "TwitterClone/item"
     "TwitterClone/memcached"
+    "github.com/olivere/elastic"
 )
 
 type request struct {
@@ -77,6 +78,26 @@ func insertItem(it item.Item) (item.Item, error) {
         } else if result.ModifiedCount != 1 {
             err = errors.New("Referenced Parent ID not found")
             return nilItem, err
+        } else { // All good. Increment in Elasticsearch.
+            esClient, err := wrappers.ESClient()
+            if err != nil {
+                Log.Error(err)
+                return nilItem, err
+            }
+            update, err := esClient.Update().Index("tweets").
+                Type("tweet").
+                Id(it.ParentID.Hex()).
+                Script(elastic.NewScriptInline("ctx._source.retweeted += params.num").
+                Lang("painless").
+                Param("num", 1)).
+                Upsert(map[string]interface{}{"retweeted": 0}).
+                Do(context.Background())
+            if err != nil {
+                Log.Error(err)
+                return nilItem, err
+            } else {
+                Log.Debug(update)
+            }
         }
     }
     // Update media which item references.
@@ -123,7 +144,7 @@ func encodeResponse(w http.ResponseWriter, response interface{}) error {
 }
 
 func AddItemHandler(w http.ResponseWriter, r *http.Request) {
-    Log.SetLevel(logrus.DebugLevel)
+    Log.SetLevel(logrus.InfoLevel)
     var res response
     username, err := checkLogin(r)
     start := time.Now()
