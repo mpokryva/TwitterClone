@@ -4,15 +4,15 @@ import (
         "time"
         "context"
         "net/http"
+        "reflect"
         "github.com/sirupsen/logrus"
-        //"github.com/logrustash"
         "encoding/json"
-        "github.com/gorilla/mux"
         "github.com/mongodb/mongo-go-driver/mongo"
         "github.com/mongodb/mongo-go-driver/bson"
         "github.com/mongodb/mongo-go-driver/bson/objectid"
         "TwitterClone/wrappers"
         "TwitterClone/item"
+        "github.com/olivere/elastic"
 )
 
 type params struct {
@@ -42,12 +42,6 @@ type res struct {
 }
 
 var Log = logrus.New()
-func main() {
-        r := mux.NewRouter()
-        r.HandleFunc("/search", SearchHandler).Methods("POST")
-        http.Handle("/", r)
-        http.ListenAndServe(":8006", nil)
-}
 
 func getUsername(r *http.Request) (string, error) {
         cookie, err := r.Cookie("username")
@@ -59,61 +53,63 @@ func getUsername(r *http.Request) (string, error) {
 }
 
 func SearchHandler(w http.ResponseWriter, req *http.Request) {
+    Log.SetLevel(logrus.DebugLevel)
     startTime := time.Now()
-        decoder := json.NewDecoder(req.Body)
-        var start params
-        var r res
-        err := decoder.Decode(&start)
-        if err != nil {
-             r.Status = "error"
-             r.Error = err.Error()
-             Log.Error("Could not decode JSON")
-             json.NewEncoder(w).Encode(r)
-             return
-        }
-        //Error checking and defaulting the parameters
-        if(start.Timestamp == 0){
-            start.Timestamp = time.Now().Unix()
-        }
-        if(start.Limit == 0){
-            start.Limit = 25
-        }
-        if(start.Limit > 100){
+    decoder := json.NewDecoder(req.Body)
+    var start params
+    var r res
+    err := decoder.Decode(&start)
+    if err != nil {
+         r.Status = "error"
+         r.Error = err.Error()
+         Log.Error("Could not decode JSON")
+         json.NewEncoder(w).Encode(r)
+         return
+    }
+    //Error checking and defaulting the parameters
+    if(start.Timestamp == 0){
+        start.Timestamp = time.Now().Unix()
+    }
+    if(start.Limit == 0){
+        start.Limit = 25
+    }
+    if(start.Limit > 100){
+        r.Status = "error"
+        r.Error = "Limit must be under 100"
+        Log.Error("Limit exceeded 100")
+        json.NewEncoder(w).Encode(r)
+    }
+    if(start.Following == nil){
+        def := new(bool)
+        *def = true
+        start.Following = def
+    }
+    if(start.Rank == nil){
+        def := new(string)
+        *def = "interest"
+        start.Rank = def
+    }
+    if(start.Replies == nil){
+        def := new(bool)
+        *def = true
+        start.Replies = def
+    }
+    Log.WithFields(logrus.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
+    "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
+    //Generating the list of items
+    //itemList, err := generateList(start, req)
+    itemList, err := searchES(start, req)
+    // Error checking the returned list and returning the proper json response.
+    if (err == nil) {
+        //it worked
+        r.Status = "OK"
+        r.Items = itemList
+    } else {
             r.Status = "error"
-            r.Error = "Limit must be under 100"
-            Log.Error("Limit exceeded 100")
-            json.NewEncoder(w).Encode(r)
-        }
-        if(start.Following == nil){
-            def := new(bool)
-            *def = true
-            start.Following = def
-        }
-        if(start.Rank == nil){
-            def := new(string)
-            *def = "interest"
-            start.Rank = def
-        }
-        if(start.Replies == nil){
-            def := new(bool)
-            *def = true
-            start.Replies = def
-        }
-        Log.WithFields(logrus.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
-        "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
-        //Generating the list of items
-        itemList, err := generateList(start, req)
-        // Error checking the returned list and returning the proper json response.
-        if (err == nil) {
-            //it worked
-            r.Status = "OK"
-            r.Items = itemList
-        } else {
-                r.Status = "error"
-                r.Error = err.Error()
-        }
-        elapsed := time.Since(startTime)
-        Log.Info("Search elapsed: " + elapsed.String())
+            r.Error = err.Error()
+    }
+    elapsed := time.Since(startTime)
+    Log.Info("Search elapsed: " + elapsed.String())
     json.NewEncoder(w).Encode(r)
 }
 
@@ -134,6 +130,66 @@ func getFollowingList(username string, db mongo.Database) ([]string){
     Log.Info(fArray.Following)
     return fArray.Following
 
+}
+
+
+func searchES(sPoint params, r *http.Request) ([]item.Item, error) {
+    if sPoint.Parent != nil && !*sPoint.Replies {
+        return nil, nil
+    }
+    client, err := wrappers.ESClient()
+    if err != nil {
+        Log.Error(err)
+        return nil, err
+    }
+    filter := elastic.NewBoolQuery()
+    filter = filter.Must(elastic.NewRangeQuery("timestamp").Lte(sPoint.Timestamp))
+    if sPoint.Q != "" { // Content
+        filter = filter.Must(elastic.NewMatchQuery("content", sPoint.Q))
+    }
+    if sPoint.Un != "" { // Username
+        filter = filter.Must(elastic.NewTermQuery("username", sPoint.Un))
+    }
+    if *sPoint.Following {
+        // TODO
+    }
+    if *sPoint.Rank == "interest" {
+
+    } else { // Sort by time.
+
+    }
+    if sPoint.Parent != nil {
+        filter = filter.Must(elastic.NewTermQuery("parent", *sPoint.Parent))
+        filter = filter.Must(elastic.NewTermQuery("childType", "reply"))
+    }
+    if !*sPoint.Replies { // Exclude reply items.
+        filter = filter.MustNot(elastic.NewTermQuery("childType", "reply"))
+    }
+    if sPoint.HasMedia { // Exclude items that don't media.
+        filter = filter.Must(elastic.NewExistsQuery("media"))
+    }
+    query := elastic.NewConstantScoreQuery(filter)
+    src, _ := query.Source()
+    strQ, _ := json.Marshal(src)
+    Log.Debug(string(strQ))
+    searchRes, err := client.Search().
+        Index("tweets").
+        Query(query).
+        Size(int(sPoint.Limit)).
+        Do(context.Background())
+    if err != nil {
+        Log.Error(err)
+        return nil, err
+    } else {
+        Log.Debug(searchRes)
+    }
+    var tweet item.Item
+    var tweets []item.Item
+    for _, it := range searchRes.Each(reflect.TypeOf(tweet)) {
+        t := it.(item.Item)
+        tweets = append(tweets, t)
+    }
+    return tweets, err
 }
 
 func generateList(sPoint params, r *http.Request) ([]item.Item, error){
