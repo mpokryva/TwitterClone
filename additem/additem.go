@@ -168,6 +168,7 @@ func insertToES(it item.Item) error {
     Log.Error(it)
     res, err := client.Index().
     Index("tweets").
+    Id(it.ID.Hex()).
     Type("tweet").
     BodyJson(it).
     Do(context.Background())
