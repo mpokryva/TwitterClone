@@ -141,30 +141,6 @@ func insertUser(username string, email string, password string) (string, error) 
     } else {
         return key, nil
      }
-     //update followers Collection
-     followersCol := db.Collection("followers")
-     doc = bson.NewDocument(
-         bson.EC.String("useername", user.Username),
-         bson.EC.Array("followers", bson.NewArray()))
-     _, err = followersCol.InsertOne(context.Background(), doc)
-     if err != nil {
-         Log.Error(err)
-         return "", err
-     } else {
-         return key, nil
-      }
-      //updatw following collection
-     followingCol := db.Collection("following")
-     doc = bson.NewDocument(
-         bson.EC.String("useername", user.Username),
-         bson.EC.Array("following", bson.NewArray()))
-     _, err = followingCol.InsertOne(context.Background(), doc)
-     if err != nil {
-         Log.Error(err)
-         return "", err
-     } else {
-         return key, nil
-      }
 }
 
 func sendError(w http.ResponseWriter, err error) {

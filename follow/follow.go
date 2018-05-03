@@ -47,7 +47,6 @@ func followUser(currentUser string, userToFol string, follow bool) error {
 
     db := client.Database("twitter")
     coll := db.Collection("users")
-    followersCol := db.Collection("followers")
     followingCol := db.Collection("following")
     // Check if user to follow exists.
     // Assuming that logged in user exists (not bogus cookie).
@@ -61,42 +60,36 @@ func followUser(currentUser string, userToFol string, follow bool) error {
         Log.Info(err)
         return errors.New("User to follow doesn't exist.")
     }
-    var listOp string
     var countInc int32
     if follow {
-        listOp = "$addToSet"
         countInc = 1
     } else {
-        listOp = "$pull"
         countInc = -1
     }
-    // Update following list of logged in user.
+    dbStart = time.Now()
     filter := bson.NewDocument(
-        bson.EC.String("username", currentUser))
-    update := bson.NewDocument(
-        bson.EC.SubDocumentFromElements(listOp,
-            bson.EC.String("following", userToFol)))
-    err = UpdateOne(followingCol, filter, update)
-    if err != nil {
+        bson.EC.String("username", currentUser),
+        bson.EC.String("userToFollow", userToFol))
+    resDoc := bson.NewDocument()
+    err = followingCol.FindOne(context.Background(), filter).Decode(resDoc)
+    elapsed = time.Since(dbStart)
+    Log.WithFields(logrus.Fields{"endpoint":"item",
+        "timeElapsed":elapsed.String()}).Info(
+            "Getting like from likes coll.")
+    if (err == nil) == follow {
+        // follow already exists
+        err = errors.New("Tried to duplicate follow/unfollow")
+        Log.Error(err)
         return err
+    } else {
+        go updateFollow(client, currentUser, userToFol, follow)
+        return nil
     }
-
     // Update following count.
-    update = bson.NewDocument(
+    update := bson.NewDocument(
         bson.EC.SubDocumentFromElements("$inc",
             bson.EC.Int32("followingCount", countInc)))
     err = UpdateOne(coll, filter, update)
-    if err != nil {
-        return err
-    }
-
-    // Updated following successfully. Now updating followers of other user.
-    filter = bson.NewDocument(
-        bson.EC.String("username", userToFol))
-    update = bson.NewDocument(
-        bson.EC.SubDocumentFromElements(listOp,
-            bson.EC.String("followers", currentUser)))
-    err = UpdateOne(followersCol, filter, update)
     if err != nil {
         return err
     }
@@ -105,6 +98,52 @@ func followUser(currentUser string, userToFol string, follow bool) error {
         bson.EC.SubDocumentFromElements("$inc",
             bson.EC.Int32("followerCount", countInc)))
     return UpdateOne(coll, filter, update)
+}
+
+func updateFollow(client *mongo.Client, currentUser string, userToFol string, follow bool) {
+    db := client.Database("twitter")
+    followersCol := db.Collection("followers")
+    followingCol := db.Collection("following")
+    dbStart := time.Now()
+    if follow {
+      filter := bson.NewDocument(
+        bson.EC.String("follower", currentUser),
+        bson.EC.String("user", userToFol))
+        _, err := followersCol.InsertOne(context.Background(), filter)
+        if err != nil {
+           Log.Error(err)
+        }
+        filter = bson.NewDocument(
+            bson.EC.String("user", currentUser),
+            bson.EC.String("following", userToFol))
+        _, err = followingCol.InsertOne(context.Background(), filter)
+        if err != nil {
+             Log.Error(err)
+        }
+        elapsed := time.Since(dbStart)
+        Log.WithFields(logrus.Fields{"endpoint":"item",
+            "timeElapsed":elapsed.String()}).Info(
+                "Inserting a like time elapsed")
+    } else {
+        // Delete follow doc.
+        filter := bson.NewDocument(
+          bson.EC.String("follower", currentUser),
+          bson.EC.String("user", userToFol))
+          _, err := followersCol.DeleteOne(context.Background(), filter)
+          if err != nil {
+             Log.Error(err)
+          }
+          filter = bson.NewDocument(
+              bson.EC.String("user", currentUser),
+              bson.EC.String("following", userToFol))
+          _, err = followingCol.DeleteOne(context.Background(), filter)
+          if err != nil {
+               Log.Error(err)
+          }
+        elapsed := time.Since(dbStart)
+        Log.WithFields(logrus.Fields{"endpoint":"item",
+            "timeElapsed":elapsed.String()}).Info("Delete like time elapsed")
+    }
 }
 
 func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) error {
@@ -122,7 +161,7 @@ func UpdateOne(coll *mongo.Collection, filter interface{}, update interface{}) e
     }
     if err != nil {
         return err
-    } else if !success {      
+    } else if !success {
         return errors.New("Database is operating normally, but follow update " +
         "operation failed.")
     } else {
@@ -134,6 +173,11 @@ func decodeRequest(r *http.Request) (Request, error) {
     decoder := json.NewDecoder(r.Body)
     var it Request
     err := decoder.Decode(&it)
+    if it.Follow == nil{
+      def := new(bool)
+      *def = true
+      it.Follow = def
+    }
     return it, err
 }
 
