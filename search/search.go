@@ -113,23 +113,40 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
     json.NewEncoder(w).Encode(r)
 }
 
-func getFollowingList(username string, db mongo.Database) ([]string){
-    filter := bson.NewDocument(bson.EC.String("username",username))
-    c := db.Collection("users")
-    proj := bson.NewDocument(bson.EC.Int32("following",1), bson.EC.Int32("_id",0))
-    var fArray followingList
+func getFollowingList(username string) ([]string, error){
+    client, err := wrappers.NewClient()
+    if err != nil {
+        return nil, err
+    }
+    db := client.Database("twitter")
+    coll := db.Collection("following")
+    filter := bson.NewDocument(bson.EC.String("user", username))
+    proj := bson.NewDocument(bson.EC.Int32("_id",0), bson.EC.Int32("user", 0))
     option, err := mongo.Opt.Projection(proj)
     if err != nil {
-            return nil
+        return nil,err
     }
-    err = c.FindOne(context.Background(),filter,option).Decode(&fArray)
+    cursor, err := coll.Find(context.Background(), filter, option)
     if err != nil{
-        Log.Error("Could not find user in DB")
-        return nil
+        return nil, err
     }
-    Log.Info(fArray.Following)
-    return fArray.Following
-
+    var fArr []string
+    doc := bson.NewDocument()
+    for cursor.Next(context.Background()) {
+        doc.Reset()
+        err := cursor.Decode(doc)
+        if err != nil {
+            Log.Error(err)
+            return nil, err
+        }
+        f, err := doc.Lookup("following")
+        if err != nil {
+            Log.Error(err)
+            return nil, err
+        }
+        fArr = append(fArr, f.Value().StringValue())
+    }
+    return fArr, nil
 }
 
 
@@ -138,45 +155,62 @@ func searchES(sPoint params, r *http.Request) ([]item.Item, error) {
         return nil, nil
     }
     client, err := wrappers.ESClient()
+    search := client.Search().Index("tweets")
     if err != nil {
         Log.Error(err)
         return nil, err
     }
     filter := elastic.NewBoolQuery()
-    filter = filter.Must(elastic.NewRangeQuery("timestamp").Lte(sPoint.Timestamp))
+    filter = filter.Filter(elastic.NewRangeQuery("timestamp").Lte(sPoint.Timestamp))
     if sPoint.Q != "" { // Content
-        filter = filter.Must(elastic.NewMatchQuery("content", sPoint.Q))
+        filter = filter.Filter(elastic.NewMatchQuery("content", sPoint.Q))
     }
     if sPoint.Un != "" { // Username
-        filter = filter.Must(elastic.NewTermQuery("username", sPoint.Un))
+        filter = filter.Filter(elastic.NewTermQuery("username", sPoint.Un))
     }
     if *sPoint.Following {
-        // TODO
+        /*
+        ind := '\"index\" : \"following\"'
+        typ := '\"type\" : \"_doc\"'
+        filter = filter.Filter(elastic.NewTermsQuery("username"*/
+        currUsername, err := getUsername(r)
+        if err != nil {
+            return nil, err
+        }
+        folList, err := getFollowingList(currUsername)
+        terms := make([]interface{}, len(folList))
+        for i, f := range folList {
+            terms[i] = f
+        }
+        if err != nil {
+            return nil, err
+        }
+        filter = filter.Filter(elastic.NewTermsQuery("username", terms...))
     }
     if *sPoint.Rank == "interest" {
-
+        search = search.SortBy(elastic.NewFieldSort("property.likes").Desc(),
+            elastic.NewFieldSort("retweeted").Desc())
     } else { // Sort by time.
-
+        search = search.SortBy(elastic.NewFieldSort("timestamp").Asc())
     }
     if sPoint.Parent != nil {
-        filter = filter.Must(elastic.NewTermQuery("parent", *sPoint.Parent))
-        filter = filter.Must(elastic.NewTermQuery("childType", "reply"))
+        filter = filter.Filter(elastic.NewTermQuery("parent", *sPoint.Parent))
+        filter = filter.Filter(elastic.NewTermQuery("childType", "reply"))
     }
     if !*sPoint.Replies { // Exclude reply items.
         filter = filter.MustNot(elastic.NewTermQuery("childType", "reply"))
     }
     if sPoint.HasMedia { // Exclude items that don't media.
-        filter = filter.Must(elastic.NewExistsQuery("media"))
+        filter = filter.Filter(elastic.NewExistsQuery("media"))
     }
-    query := elastic.NewConstantScoreQuery(filter)
+    // query := elastic.NewConstantScoreQuery(filter)
+    query := filter
     src, _ := query.Source()
     strQ, _ := json.Marshal(src)
     Log.Debug(string(strQ))
-    searchRes, err := client.Search().
-        Index("tweets").
-        Query(query).
-        Size(int(sPoint.Limit)).
-        Do(context.Background())
+    search = search.Query(query).
+        Size(int(sPoint.Limit))
+    searchRes, err := search.Do(context.Background())
     if err != nil {
         Log.Error(err)
         return nil, err
@@ -219,7 +253,10 @@ func generateList(sPoint params, r *http.Request) ([]item.Item, error){
         matchFilter.Append(bson.EC.String("username", sPoint.Un))
     }
     if(*(sPoint.Following) == true){
-        followingList:=getFollowingList(user, *db)
+        followingList, err := getFollowingList(user)
+        if err != nil {
+            return nil, err
+        }
         bArray := bson.NewArray()
         for _,element := range followingList {
             bArray.Append(bson.VC.String(element))
