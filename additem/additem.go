@@ -13,7 +13,6 @@ import (
     "TwitterClone/wrappers"
     "TwitterClone/item"
     "TwitterClone/memcached"
-    //"github.com/olivere/elastic"
 )
 
 type request struct {
@@ -78,21 +77,7 @@ func insertItem(it item.Item) (item.Item, error) {
         } else if result.ModifiedCount != 1 {
             err = errors.New("Referenced Parent ID not found")
             return nilItem, err
-        } else { // All good. Increment in Elasticsearch.
-            /*
-            esClient, err := wrappers.ESClient()
-            if err != nil {
-                Log.Error(err)
-                return nilItem, err
-            }
-            update, err := esClient.Update().Index("tweets").
-                Type("tweet").
-                Id(it.ParentID.Hex()).
-                Script(elastic.NewScriptInline("ctx._source.retweeted += params.num").
-                Lang("painless").
-                Param("num", 1)).
-                Upsert(map[string]interface{}{"retweeted": 0}).
-                Do(context.Background())*/
+        } else {
             if err != nil {
                 Log.Error(err)
                 return nilItem, err
@@ -129,7 +114,7 @@ func insertItem(it item.Item) (item.Item, error) {
         }
     }
     elapsed = time.Since(start)
-    //Log.Info("AddItem elapsed: " + elapsed.String())
+    Log.Info("AddItem elapsed: " + elapsed.String())
     return it, nil
 }
 
@@ -181,27 +166,6 @@ func AddItemHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func insertToES(it item.Item) error {
-    client, err := wrappers.ESClient()
-    if err != nil {
-        Log.Error(err)
-        return err
-    }
-    Log.Error(it)
-    res, err := client.Index().
-    Index("tweets").
-    Id(it.ID.Hex()).
-    Type("tweet").
-    BodyJson(it).
-    Do(context.Background())
-    if err != nil {
-        Log.Error(err)
-    } else {
-        Log.Info(res)
-    }
-    return err
-}
-
 func insertWithTimer(req request, oid objectid.ObjectID,
     pOID objectid.ObjectID, mOIDs []objectid.ObjectID,
     username string, start time.Time) {
@@ -236,10 +200,6 @@ func insertWithTimer(req request, oid objectid.ObjectID,
     elapsed := time.Since(start)
     Log.WithFields(logrus.Fields{"endpoint": "additem",
         "timeElapsed":elapsed.String()}).Info("post-insert")
-    err = insertToES(it)
-    if err != nil {
-        Log.Error(err)
-    }
 }
 
 
