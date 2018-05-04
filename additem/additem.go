@@ -218,13 +218,12 @@ func validateRequest(req request) (objectid.ObjectID, []objectid.ObjectID, error
     } else if req.ParentID == nil {
         err = errors.New("Parent must be set when child type exists.")
     } else {
-
         pOID, err = objectid.FromHex(*req.ParentID)
     }
     if err == nil && req.MediaIDs != nil {
         for _, mID := range *req.MediaIDs {
             mOID, idErr := objectid.FromHex(mID)
-            if err == nil {
+            if idErr == nil {
                 mOIDs = append(mOIDs, mOID)
             } else {
                 err = idErr
