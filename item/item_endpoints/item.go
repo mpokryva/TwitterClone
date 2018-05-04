@@ -14,7 +14,7 @@ import (
     "TwitterClone/wrappers"
     "TwitterClone/item"
     "TwitterClone/memcached"
-    "github.com/olivere/elastic"
+    //"github.com/olivere/elastic"
 )
 
 type like struct {
@@ -173,6 +173,7 @@ func updateLike(client *mongo.Client,
             Log.Error(err)
         }
         // Update in ES.
+        /*
         esClient, err := wrappers.ESClient()
         if err != nil {
             Log.Error(err)
@@ -186,11 +187,12 @@ func updateLike(client *mongo.Client,
             Param("num", 1)).
             Upsert(map[string]interface{}{"property.likes": 0}).
             Do(context.Background())
+
         if err != nil {
             Log.Error(err)
         } else {
             Log.Debug(update)
-        }
+        }*/
     }
 }
 

@@ -53,7 +53,6 @@ func getUsername(r *http.Request) (string, error) {
 }
 
 func SearchHandler(w http.ResponseWriter, req *http.Request) {
-    Log.SetLevel(logrus.DebugLevel)
     startTime := time.Now()
     decoder := json.NewDecoder(req.Body)
     var start params
@@ -155,7 +154,7 @@ func searchES(sPoint params, r *http.Request) ([]item.Item, error) {
         return nil, nil
     }
     client, err := wrappers.ESClient()
-    search := client.Search().Index("tweets")
+    search := client.Search().Index("twitter.tweets")
     if err != nil {
         Log.Error(err)
         return nil, err

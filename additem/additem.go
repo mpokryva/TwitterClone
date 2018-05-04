@@ -13,7 +13,7 @@ import (
     "TwitterClone/wrappers"
     "TwitterClone/item"
     "TwitterClone/memcached"
-    "github.com/olivere/elastic"
+    //"github.com/olivere/elastic"
 )
 
 type request struct {
@@ -79,6 +79,7 @@ func insertItem(it item.Item) (item.Item, error) {
             err = errors.New("Referenced Parent ID not found")
             return nilItem, err
         } else { // All good. Increment in Elasticsearch.
+            /*
             esClient, err := wrappers.ESClient()
             if err != nil {
                 Log.Error(err)
@@ -91,7 +92,7 @@ func insertItem(it item.Item) (item.Item, error) {
                 Lang("painless").
                 Param("num", 1)).
                 Upsert(map[string]interface{}{"retweeted": 0}).
-                Do(context.Background())
+                Do(context.Background())*/
             if err != nil {
                 Log.Error(err)
                 return nilItem, err

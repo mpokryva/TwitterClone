@@ -28,9 +28,6 @@ type response struct {
 
 var Log *logrus.Logger
 var cacheMedia = false
-func main() {
-    Log.SetLevel(logrus.ErrorLevel)
-}
 
 func checkLogin(r *http.Request) (string, error) {
     cookie, err := r.Cookie("username")
