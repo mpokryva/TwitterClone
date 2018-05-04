@@ -270,19 +270,21 @@ func getItemFromMongo(id string) response {
 
 //DELETE ITEM FUNCTIONS START HERE
 func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
+    username, err := checkLogin(r)
+    if err != nil {
+        w.WriteHeader(http.StatusUnauthorized)
+        return
+    }
     var statusCode int
     id := mux.Vars(r)["id"]
     Log.Debug(id)
-    statusCode = deleteItemEndpoint(id)
+    statusCode = deleteItem(username, id)
     w.WriteHeader(statusCode)
 }
 
-func deleteItemEndpoint(id string) int {
-    return deleteItem(id)
-}
 
-func deleteItem(id string) int {
-  dbStart := time.Now()
+func deleteItem(username string, id string) int {
+    dbStart := time.Now()
     client, err := wrappers.NewClient()
     if err != nil {
         Log.Error(err)
@@ -297,14 +299,15 @@ func deleteItem(id string) int {
     }
     // Pull item from database.
     var it item.Item
-    doc := bson.NewDocument(bson.EC.ObjectID("_id", objectid))
+    doc := bson.NewDocument(
+        bson.EC.ObjectID("_id", objectid),
+        bson.EC.String("username", username))
     err = col.FindOne(context.Background(), doc).Decode(&it)
     if err != nil {
         Log.Info("item does not exist")
         Log.Error(err)
         return http.StatusBadRequest
     }
-
     // Delete associated media, if it exists.
     var result *mongo.UpdateResult
     if it.MediaIDs != nil {
@@ -322,7 +325,6 @@ func deleteItem(id string) int {
             result, err = col.UpdateMany(context.Background(), filter, update)
             Log.Debug(result)
     }
-
     elapsed := time.Since(dbStart)
     Log.WithFields(logrus.Fields{"endpoint":"item", "timeElapsed":elapsed.String()}).Info("Delete associated media elapsed")
     if err != nil {
