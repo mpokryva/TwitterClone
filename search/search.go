@@ -96,8 +96,8 @@ func SearchHandler(w http.ResponseWriter, req *http.Request) {
     Log.WithFields(logrus.Fields{"timestamp": start.Timestamp, "limit": start.Limit,
     "Q": start.Q, "un": start.Un, "following": *start.Following}).Info("params")
     //Generating the list of items
-    //itemList, err := generateList(start, req)
-    itemList, err := searchES(start, req)
+    itemList, err := generateList(start, req)
+    //itemList, err := searchES(start, req)
     // Error checking the returned list and returning the proper json response.
     if (err == nil) {
         //it worked
